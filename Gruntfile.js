@@ -30,7 +30,7 @@ module.exports = function(grunt) {
 
   lDevRelease = 'release/' + latest + '.js';
   lMinRelease = 'release/' + latest + '.min.js';
-  publicRelease = 'public/scripts/' + latest + '.min.js';
+  publicRelease = 'public/scripts/' + latest + '.js';
 
   grunt.initConfig({
     pkg : grunt.file.readJSON('package.json'),
@@ -149,7 +149,8 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-cssmin');
   grunt.loadNpmTasks('grunt-plato');
 
-  grunt.registerTask('default', ['jshint', 'cssmin', 'jasmine', 'concat', 'copy', 'plato']);
+  grunt.registerTask('default', ['cssmin', 'concat', 'copy']);
+  grunt.registerTask('release', ['jshint', 'cssmin', 'concat', 'copy', 'plato']);
   grunt.registerTask('test', ['jshint', 'jasmine']);
   grunt.registerTask('lint', ['jshint']);
   grunt.registerTask('report', ['plato']);

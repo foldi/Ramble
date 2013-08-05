@@ -1,6 +1,6 @@
 'use strict';
 
-describe("Foot", function() {
+/*describe("Foot", function() {
 
   var foot;
 
@@ -12,4 +12,4 @@ describe("Foot", function() {
     expect(typeof foot.message).toEqual('string');
   });
 
-});
+});*/

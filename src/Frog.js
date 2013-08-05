@@ -1,16 +1,9 @@
-/*! Ramble v1.0.0 - 2013-08-04 04:08:30 
- *  Vince Allen 
- *  Brooklyn, NY 
- *  vince@vinceallen.com 
- *  @vinceallenvince 
- *  License: MIT */
-
-var Ramble = {}, exports = Ramble;
-
-(function(exports) {
-
-"use strict";
-
+/**
+ * Creates a new Frog.
+ *
+ * @param {Object} [opt_options=] A map of initial properties.
+ * @constructor
+ */
 function Frog(opt_options) {
 	var options = opt_options || {};
 	SimpleSim.Item.call(this, options);
@@ -103,9 +96,9 @@ Frog.positionObj = function(i, height) {
  */
 Frog.reflowObjs = function() {
 
-	var objs = SimpleSim.System.getAllItemsByName('Frog');
+	var i, max, objs = SimpleSim.System.getAllItemsByName('Frog');
 
-	for (var i = 0, max = objs.length; i < max; i++) {
+	for (i = 0, max = objs.length; i < max; i++) {
 		SimpleSim.System.destroyItem(objs[i]);
 	}
 
@@ -116,7 +109,7 @@ Frog.reflowObjs = function() {
 
 	window.scrollTo(0, 0);
 
-  for (var i = 0; i < Frog.totalColumns; i++) {
+  for (i = 0; i < Frog.totalColumns; i++) {
     Frog.createStory(i);
   }
 };
@@ -166,7 +159,7 @@ Frog.getLongestColumn = function() {
       Frog.columns.list.push(Frog.columns.lookup[i]);
     }
   }
-  Frog.columns.list.sort(function(a,b){return b-a});
+  Frog.columns.list.sort(function(a,b){return b-a;});
   return Frog.columns.list[0];
 };
 
@@ -215,7 +208,3 @@ Frog.prototype.step = function() {
   }
 
 };
-
-exports.Frog = Frog;
-
-}(exports));
