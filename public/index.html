@@ -16,56 +16,53 @@
     <script type='text/javascript' charset='utf-8'>
 
       var system = SimpleSim.System;
-      SimpleSim.Classes = Ramble;
+      SimpleSim.System.Classes = Ramble;
 
-      system.init(null, null, document.getElementById('worldA'), {
-        csstransforms3d: true,
-        csstransforms: true
+      var world = new SimpleSim.World(document.getElementById('worldA'));
+      world.afterResize = Ramble.Frogger.reflowObjs;
+
+      system.init(world, {
+        csstransforms3d: Modernizr.csstransforms3d,
+        csstransforms: Modernizr.csstransforms
       });
 
-      system._records.list[0].afterResize = Ramble.Frog.reflowObjs;
+      system._records.list[0].afterResize = Ramble.Frogger.reflowObjs;
 
-      document.addEventListener('scroll', scrollUpdate, false);
+      Ramble.Frogger.init({
+        objPadding: 60,
+        objWidth: 120,
+        minScrollSpeed: 0.4,
+        maxScrollSpeed: 0.45,
+        initialYOffset: 0
+      });
 
-      Ramble.Frog.setTotalColumns();
-      Ramble.Frog.setViewportDimensions();
-      Ramble.Frog.setControlBlock(document.getElementById('scrollBlock'));
-
-      window.scrollTo(0, 0);
-
-      // create
-      for (var i = 0; i < Ramble.Frog.totalColumns; i++) {
-        Ramble.Frog.createStory(i);
+      for (var i = 0; i < Ramble.Frogger.totalColumns; i++) { // create first row
+        Ramble.Frogger.createFrog(i);
       }
 
-      function scrollUpdate() {
+      var shortestColumn = 0;
+      while(shortestColumn < Ramble.Frogger.viewportDimensions.height) {
+        system._update();
+        shortestColumn = Ramble.Frogger.getMinMaxColumn();
+      }
 
-        if (Ramble.Frog.lastPageYOffset > window.pageYOffset) {
-          Ramble.Frog.scrollDirection = 1;
-        } else {
-          Ramble.Frog.scrollDirection = -1;
-        }
+      // get width of frog column
+      // pass to createFrogNUX
 
-        Ramble.Frog.lastPageYOffset = window.pageYOffset;
+      /*var width = Ramble.Frogger.getFrogAreaWidth();
 
-        //
+      Ramble.Frogger.createFrogNUX({
+        width: width
+      });*/
 
-        var objs = SimpleSim.System.getAllItemsByName('Frog');
+      /*Ramble.Frogger.createFroggerMenu({
+        width: width
+      });*/
 
-        for (var i = 0, max = objs.length; i < max; i++) {
-          var obj = objs[i];
-          obj.location.y = obj.initLocation.y + (window.pageYOffset * -obj.scrollSpeed);
-        }
+      system._update();
 
-        Ramble.Frog.scrollDistance = window.pageYOffset;
-        controlBlockHeight = parseInt(Ramble.Frog.controlBlock.style.height.replace('px', ''), 10);
-
-        if (Ramble.Frog.scrollDistance + Ramble.Frog.viewportDimensions.height >= controlBlockHeight) {
-          Ramble.Frog.controlBlock.style.height = controlBlockHeight + (Ramble.Frog.viewportDimensions.height * 4) + 'px';
-        }
-
-      };
-
+      var statsDisplay = new Ramble.StatsDisplay();
+    
     </script>
   </body>
 </html>

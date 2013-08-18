@@ -1,8 +1,9 @@
-/*! SimpleSim v1.0.0 - 2013-08-03 04:08:26 
- *  Vince Allen 
- *  Brooklyn, NY 
- *  vince@vinceallen.com 
- *  @vinceallenvince 
+/*global window, document */
+/*! SimpleSim v1.0.0 - 2013-08-03 04:08:26
+ *  Vince Allen
+ *  Brooklyn, NY
+ *  vince@vinceallen.com
+ *  @vinceallenvince
  *  License: MIT */
 
 var SimpleSim = {}, exports = SimpleSim;
@@ -142,10 +143,10 @@ Item.prototype.draw = function() {
 };
 exports.Item = Item;
 
-/** @namespace */
-var System = {
-  name: 'System'
-};
+/**
+ * @namespace
+ */
+var System = {};
 
 /**
  * Stores references to all items in the system.
@@ -178,6 +179,13 @@ System._stylePosition = '';
 System._resizeTime = 0;
 
 /**
+ * Holds the last page position on the y-axis. Use to
+ * determine when page has stopped scrolling.
+ * @type {Number}
+ */
+System._lastPageYOffset = 0;
+
+/**
  * Increments idCount and returns the value.
  */
 System.getNewId = function() {
@@ -188,120 +196,48 @@ System.getNewId = function() {
 /**
  * Initializes the system and starts the update loop.
  *
- * @param {Function} opt_setup= Creates the initial system conditions.
- * @param {Object} opt_worldOptions= Optional properties for the world.
  * @param {Object} opt_world= A reference to a DOM element representing the System world.
  * @param {Function} opt_supportedFeatures= A map of supported browser features.
  */
-System.init = function(opt_setup, opt_worldOptions, opt_world, opt_supportedFeatures) {
+System.init = function(opt_world, opt_supportedFeatures) {
 
-	var setup = opt_setup || function () {},
-      world = opt_world || document.body,
-      worldOptions = opt_worldOptions || {},
+  var world = opt_world || document.body,
       supportedFeatures = opt_supportedFeatures || null;
 
   if (supportedFeatures.csstransforms3d) {
-    this._stylePosition = '-webkit-transform: translate3d(<x>px, <y>px, 0) rotate(<a>deg); -moz-transform: translate3d(<x>px, <y>px, 0) rotate(<a>deg); -o-transform: translate3d(<x>px, <y>px, 0) rotate(<a>deg); -ms-transform: translate3d(<x>px, <y>px, 0) rotate(<a>deg);';
+    this._stylePosition = 'transform: translate3d(<x>px, <y>px, 0) rotate(<a>deg); ' +
+        '-webkit-transform: translate3d(<x>px, <y>px, 0) rotate(<a>deg); ' +
+        '-moz-transform: translate3d(<x>px, <y>px, 0) rotate(<a>deg); ' +
+        '-o-transform: translate3d(<x>px, <y>px, 0) rotate(<a>deg); ' +
+        '-ms-transform: translate3d(<x>px, <y>px, 0) rotate(<a>deg);';
   } else if (supportedFeatures.csstransforms) {
-    this._stylePosition = '-webkit-transform: translate(<x>px, <y>px) rotate(<a>deg); -moz-transform: translate(<x>px, <y>px) rotate(<a>deg); -o-transform: translate(<x>px, <y>px) rotate(<a>deg); -ms-transform: translate(<x>px, <y>px) rotate(<a>deg);';
+    this._stylePosition = 'transform: translate(<x>px, <y>px) rotate(<a>deg); ' +
+        '-webkit-transform: translate(<x>px, <y>px) rotate(<a>deg); ' +
+        '-moz-transform: translate(<x>px, <y>px) rotate(<a>deg); ' +
+        '-o-transform: translate(<x>px, <y>px) rotate(<a>deg); ' +
+        '-ms-transform: translate(<x>px, <y>px) rotate(<a>deg);';
   } else {
     this._stylePosition = 'position: absolute; left: <x>px; top: <y>px;';
   }
 
-  System._records.list.push(new exports.World(world, worldOptions));
+  System._records.list.push(world);
 
-  exports.Utils._addEvent(window, 'resize', function(e) {
+  Utils._addEvent(window, 'resize', function(e) {
     System._resize.call(System, e);
   });
 
-  exports.Utils._addEvent(window, 'devicemotion', function(e) {
-
-    var world = System._records.list[0],
-        x = e.accelerationIncludingGravity.x,
-        y = e.accelerationIncludingGravity.y;
-
-    if (window.orientation === 0) {
-      world.gravity.x = x;
-      world.gravity.y = y * -1;
-    } else if (window.orientation === -90) {
-      world.gravity.x = y;
-      world.gravity.y = x;
-    } else {
-      world.gravity.x = y * -1;
-      world.gravity.y = x * -1;
-    }
-  });
-
-  exports.Utils._addEvent(window, 'keyup', function(e) {
-    System._keyup.call(System, e);
-  });
-
-  System.mouse = {
-    location: new exports.Vector(),
-    lastLocation: new exports.Vector(),
-    velocity: new exports.Vector()
-  };
-  exports.Utils._addEvent(document, 'mousemove', function(e) {
-    System._recordMouseLoc.call(System, e);
-  });
-
-	setup.call(this);
-  this._setup = setup;
   this._update();
-
-
-};
-
-/**
- * Handles keyup events.
- *
- * @param {Object} e An event.
- */
-System._keyup = function(e) {
-
-  var world = this._records.list[0];
-
-  switch(e.keyCode) {
-    case 39:
-      System._stepForward(); // right arrow: step forward
-    break;
-    case 80: // p; pause/play
-      world.pauseStep = !world.pauseStep;
-      break;
-    case 82: // r; reset
-      System._resetSystem();
-      break;
-  }
-};
-
-/**
- * Saves the mouse velocity and location relative to the browser viewport.
- * @param {Object} e An event.
- * @private
- */
-System._recordMouseLoc = function(e) {
-  this.mouse.lastLocation.x = this.mouse.location.x;
-  this.mouse.lastLocation.y = this.mouse.location.y;
-  if (e.pageX && e.pageY) {
-    this.mouse.location.x = e.pageX;
-    this.mouse.location.y = e.pageY;
-  } else if (e.clientX && e.clientY) {
-    this.mouse.location.x = e.clientX;
-    this.mouse.location.y = e.clientY;
-  }
-  this.mouse.velocity.x = this.mouse.lastLocation.x - this.mouse.location.x;
-  this.mouse.velocity.y = this.mouse.lastLocation.y - this.mouse.location.y;
 };
 
 /**
  * Adds an object to the system.
  *
+ * @param {string} klass Function will try to create an instance of this class.
  * @param {Object} opt_options= Object properties.
  */
 System.add = function(klass, opt_options) {
 
   var i, max, pool, last, records = this._records.list,
-      recordsLookup = this._records.lookup,
       options = opt_options || {};
 
   options.world = records[0];
@@ -314,22 +250,20 @@ System.add = function(klass, opt_options) {
       if (options.world._pool[i].name === klass) {
         records[records.length] = options.world._pool.splice(i, 1)[0];
         records[records.length - 1].options = options;
-        //System._updateCacheLookup(records[records.length - 1], true);
         break;
       }
     }
   } else {
     if (exports[klass]) {
       records[records.length] = new exports[klass](options);
-    } else if (exports.Classes[klass]) {
-      records[records.length] = new exports.Classes[klass](options);
+    } else if (System.Classes[klass]) {
+      records[records.length] = new System.Classes[klass](options);
     } else {
       throw new Error(klass + ' class does not exist.');
     }
   }
 
   last = records.length - 1;
-  recordsLookup[records[last].id] = records[last].el.parentNode;
   records[last].init(options);
   return records[last];
 };
@@ -379,26 +313,18 @@ System._update = function() {
   for (i = records.length - 1; i >= 0; i -= 1) {
     records[i].draw();
   }
-  window.requestAnimFrame(System._update);
-};
-
-/**
- * Pauses the system and processes one step in records.
- * @private
- */
-System._stepForward = function() {
-
-  var i, records = System._records.list,
-      world = this._records.list[0];
-
-  world.pauseStep = true;
-
-  for (i = records.length - 1; i >= 0; i -= 1) {
-    records[i].step();
+  
+  /**
+   * Only call raf if page is scrolling.
+   */
+  if (window.pageYOffset - System._lastPageYOffset || System._resizeTime) {
+    window.requestAnimFrame(System._update);
+    System._updating = true;
+  } else {
+    System._updating = false;
   }
-  for (i = records.length - 1; i >= 0; i -= 1) {
-    records[i].draw();
-  }
+
+  System._lastPageYOffset = window.pageYOffset;
 };
 
 /**
@@ -432,52 +358,36 @@ System.getCSSText = function(props) {
   return this._stylePosition.replace(/<x>/g, props.x).replace(/<y>/g, props.y).replace(/<a>/g, props.a) + ' width: ' +
       props.width + 'px; height: ' + props.height + 'px; background-color: ' +
       'rgb(' + props.color0 + ', ' + props.color1 + ', ' + props.color2 + ');' +
-      'opacity: ' + props.opacity +  '; z-index: ' + props.zIndex + '; visibility: ' + props.visibility + '; border-radius: ' + props.borderRadius + '%';
+      'opacity: ' + props.opacity + '; z-index: ' + props.zIndex + '; visibility: ' +
+      props.visibility + '; border-radius: ' + props.borderRadius + '%';
 };
 
 /**
  * Repositions all items relative to the viewport size and resets the world bounds.
  */
-System._resize = function() {
+System._resize = function(e, opt_rel) {
 
   var i, max, records = this._records.list, record,
-      viewportSize = exports.Utils.getViewportSize(),
+      viewportSize = Utils.getViewportSize(),
       world = records[0];
 
   this._resizeTime = new Date().getTime();
   world.pauseStep = true;
 
-  for (i = 1, max = records.length; i < max; i++) {
-    record = records[i];
-    record.location.x = viewportSize.width * (record.location.x / world.width);
-    record.location.y = viewportSize.height * (record.location.y / world.height);
+  if (opt_rel) {
+    for (i = 1, max = records.length; i < max; i++) {
+      record = records[i];
+      record.location.x = viewportSize.width * (record.location.x / world.width);
+      record.location.y = viewportSize.height * (record.location.y / world.height);
+    }
   }
 
   world.width = viewportSize.width;
   world.height = viewportSize.height;
-  world.location = new exports.Vector((viewportSize.width / 2),
+  world.location = new Vector((viewportSize.width / 2),
     (viewportSize.height / 2));
-};
 
-/**
- * Resets the system.
- *
- * @param {boolean} opt_noRestart= Pass true to not restart the system.
- * @private
- */
-System._resetSystem = function(opt_noRestart) {
-
-  var world = this._records.list[0],
-      viewportSize = exports.Utils.getViewportSize();
-
-  world.pauseStep = false;
-  while(world.el.firstChild) {
-    world.el.removeChild(world.el.firstChild);
-  }
-  world.location = new exports.Vector((viewportSize.width / 2),
-    (viewportSize.height / 2));
-  this._records.list = this._records.list.splice(0, 1);
-  System._setup.call(System);
+  this._update();
 };
 
 /**

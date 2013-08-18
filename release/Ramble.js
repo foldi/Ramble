@@ -1,4 +1,4 @@
-/*! Ramble v1.0.0 - 2013-08-04 04:08:30 
+/*! Ramble v1.0.0 - 2013-08-18 03:08:18 
  *  Vince Allen 
  *  Brooklyn, NY 
  *  vince@vinceallen.com 
@@ -11,211 +11,953 @@ var Ramble = {}, exports = Ramble;
 
 "use strict";
 
-function Frog(opt_options) {
-	var options = opt_options || {};
-	SimpleSim.Item.call(this, options);
+/**
+ * Creates a new ColorPalette object.
+ *
+ * Use this class to create a palette of colors randomly selected
+ * from a range created with initial start and end colors. You
+ * can also generate gradients that smoothly interpolate from
+ * start and end colors.
+ *
+ * @param {string|number} [opt_id=] An optional id. If an id is not passed, a default id is created.
+ * @constructor
+ */
+function ColorPalette(opt_id) {
+
+  /**
+   * Holds a list of arrays representing 3-digit color values
+   * smoothly interpolated between start and end colors.
+   * @private
+   */
+  this._gradients = [];
+
+  /**
+   * Holds a list of arrays representing 3-digit color values
+   * randomly selected from start and end colors.
+   * @private
+   */
+  this._colors = [];
+
+  this.id = opt_id || ColorPalette._idCount;
+  ColorPalette._idCount++; // increment id
 }
-SimpleSim.Utils.extend(Frog, SimpleSim.Item);
 
-Frog.OBJ_WIDTH = 300;
-Frog.OBJ_PADDING = 20;
-Frog.MIN_SCROLL_SPEED = 0.45;
-Frog.MAX_SCROLL_SPEED = 0.6;
+/**
+ * Increments as each ColorPalette is created.
+ * @type number
+ * @default 0
+ * @private
+ */
+ColorPalette._idCount = 0;
 
-Frog.scrollDirection = 0;
-Frog.scrollDistance = 0;
-Frog.lastScrollYOffset = 0;
-Frog.totalColumns = 0;
-Frog.controlBlock = null;
-Frog.columns = null;
-Frog.viewportDimensions = null;
+ColorPalette.prototype.name = 'ColorPalette';
 
-Frog.cache = {
-  lookup: {}
-};
+/**
+ * Creates a color range of 255 colors from the passed start and end colors.
+ * Adds a random selection of these colors to the color property of
+ * the color palette.
+ *
+ * @param {Object} options A set of required options
+ *    that includes:
+ *    options.min {number} The minimum number of colors to add.
+ *    options.max {number} The maximum number of color to add.
+ *    options.startColor {Array} The beginning color of the color range.
+ *    options.endColor {Array} The end color of the color range.
+ */
+ColorPalette.prototype.addColor = function(options) {
 
-Frog.createStory = function(i, opt_options) {
+  var i, ln, colors;
 
-  var options = opt_options || {},
-      myCol = i % Frog.totalColumns,
-      scrollSpeed = myCol % 2 ? Frog.MAX_SCROLL_SPEED : Frog.MIN_SCROLL_SPEED;
+  ln = ColorPalette._getRandomNumber(options.min, options.max);
+  colors = ColorPalette._createColorRange(options.startColor, options.endColor, 255);
 
-  options.text = i;
-
-  options.index = i;
-
-  options.name = 'Frog';
-  options.width = Frog.OBJ_WIDTH;
-  options.height = options.height || SimpleSim.Utils.getRandomNumber(300, 500);
-  options.opacity = 1;
-
-  var position = Frog.positionObj(options.index, options.height);
-
-  // need to calculate initLocation
-  options.initLocation = new SimpleSim.Vector(position.x, position.y + Frog.scrollDistance * scrollSpeed);
-  options.location = new SimpleSim.Vector(position.x, position.y);
-  options.scrollSpeed = scrollSpeed;
-  options.myCol = i % Frog.totalColumns;
-
-  var obj = SimpleSim.System.add('Frog', options);
-
-  obj.el.textContent = obj.text;
-
-};
-
-Frog.positionObj = function(i, height) {
-
-  var viewportDimensions = SimpleSim.Utils.getViewportSize(),
-      totalColumns = Frog.totalColumns,
-      myCol = i % totalColumns,
-      myRow = Math.floor(i / totalColumns),
-      position = {};
-
-  // determines offset needed to center group of stories
-  var xOffset = (viewportDimensions.width - ((totalColumns * Frog.OBJ_WIDTH) + (totalColumns + 1) * Frog.OBJ_PADDING)) / 2;
-
-  position.x = Frog.OBJ_WIDTH * myCol + // centers story at location
-      Frog.OBJ_WIDTH / 2 + // moves story origin to its left edge
-      Frog.OBJ_PADDING * (myCol + 1) + // adds padding
-      xOffset; // add centering offset
-
-  position.y = height / 2 + Frog.OBJ_PADDING;
-
-  if (Frog.scrollDirection === -1 || Frog.scrollDirection === 0) {
-    var objBefore = SimpleSim.System.getAllItemsByAttribute('index', i - totalColumns)[0];
-    if (objBefore) {
-      position.y = objBefore.location.y + (objBefore.height / 2) + (height / 2) + Frog.OBJ_PADDING;
-    }
+  for (i = 0; i < ln; i++) {
+    this._colors.push(colors[ColorPalette._getRandomNumber(0, colors.length - 1)]);
   }
-
-  if (Frog.scrollDirection === 1) {
-    var objAfter = SimpleSim.System.getAllItemsByAttribute('index', i + totalColumns)[0];
-    if (objAfter) {
-      position.y = objAfter.location.y - (objAfter.height / 2) - (height / 2) - Frog.OBJ_PADDING;
-    }
-  }
-
-  return position;
+  
+  return this;
 };
 
 /**
- * Resets page and recreates intial objects.
+ * Adds color arrays representing a color range to the gradients property.
+ *
+ * @param {Object} options A set of required options
+ *    that includes:
+ *    options.startColor {Array} The beginning color of the color range.
+ *    options.endColor {Array} The end color of the color range.
+ *    options.totalColors {number} The total number of colors in the gradient.
+ * @private
  */
-Frog.reflowObjs = function() {
+ColorPalette.prototype.createGradient = function(options) {
 
-	var objs = SimpleSim.System.getAllItemsByName('Frog');
-
-	for (var i = 0, max = objs.length; i < max; i++) {
-		SimpleSim.System.destroyItem(objs[i]);
-	}
-
-	Frog.setTotalColumns();
-  Frog.scrollDistance = 0;
-  Frog.scrollDirection = 0;
-  Frog.lastScrollYOffset = 0;
-
-	window.scrollTo(0, 0);
-
-  for (var i = 0; i < Frog.totalColumns; i++) {
-    Frog.createStory(i);
-  }
-};
-
-Frog.setTotalColumns = function() {
-  var viewportDimensions = SimpleSim.Utils.getViewportSize();
-  Frog.totalColumns = Math.floor(viewportDimensions.width / (Frog.OBJ_WIDTH + Frog.OBJ_PADDING));
-};
-
-Frog.setViewportDimensions = function() {
-  Frog.viewportDimensions = SimpleSim.Utils.getViewportSize();
-};
-
-Frog.setControlBlock = function(obj) {
-  Frog.controlBlock = obj;
-  Frog.controlBlock.style.height = (Frog.viewportDimensions.height * 4) + 'px';
-};
-
-Frog.updateCache = function(obj) {
-  var props = {
-    height: obj.height
-  };
-  Frog.cache.lookup[obj.index] = props;
-};
-
-Frog.getLongestColumn = function() {
-
-  var viewportDimensions = SimpleSim.Utils.getViewportSize();
-
-  var i, max, objs = SimpleSim.System.getAllItemsByName('Frog');
-
-  Frog.columns = {
-    lookup: {},
-    list: []
-  };
-
-  for (i = 0, max = objs.length; i < max; i++) {
-    var obj = objs[i];
-    if (!Frog.columns.lookup[obj.myCol]) {
-      Frog.columns.lookup[obj.myCol] = viewportDimensions.height;
-    }
-    Frog.columns.lookup[obj.myCol] += obj.height + Frog.OBJ_PADDING;
-  }
-
-  for (i in Frog.columns.lookup) {
-    if (Frog.columns.lookup.hasOwnProperty(i)) {
-      Frog.columns.list.push(Frog.columns.lookup[i]);
-    }
-  }
-  Frog.columns.list.sort(function(a,b){return b-a});
-  return Frog.columns.list[0];
-};
-
-Frog.prototype.step = function() {
-
-  var props, objBefore, objAfter;
-
-  if (this.opacity < 1) {
-    this.opacity += 0.1;
+  this.startColor = options.startColor;
+  this.endColor = options.endColor;
+  this.totalColors = options.totalColors || 255;
+  if (this.totalColors > 0) {
+    this._gradients.push(ColorPalette._createColorRange(this.startColor, this.endColor, this.totalColors));
   } else {
-    this.opacity = 1;
-  }
-
-  if ((Frog.scrollDirection === -1 || Frog.scrollDirection === 0) && // if initial load or scrolling up
-      this.location.y < this.world.height + (this.height / 2)) { // obj appears above bottom border
-
-    objAfter = SimpleSim.System.getAllItemsByAttribute('index', this.index + Frog.totalColumns)[0];
-
-    if (!objAfter) { // if an obj does NOT exist under me
-      props = Frog.cache.lookup[this.index + Frog.totalColumns];
-      Frog.createStory(this.index + Frog.totalColumns, props);
-    }
-  }
-
-  if (Frog.scrollDirection === 1 && // if scrolling down
-      this.location.y > this.height / 2) { // obj appears just below top border
-
-    objBefore = SimpleSim.System.getAllItemsByAttribute('index', this.index - Frog.totalColumns)[0];
-
-    if (!objBefore && this.index >= Frog.totalColumns) {
-      props = Frog.cache.lookup[this.index - Frog.totalColumns]; // recycling objects; use cache
-      Frog.createStory(this.index - Frog.totalColumns, props);
-    }
-  }
-
-  if (Frog.scrollDirection === -1 && // if scrolling up
-      this.location.y < -this.height / 2) { // obj appears just above top border
-    Frog.updateCache(this);
-    SimpleSim.System.destroyItem(this); // destory this obj
-  }
-
-  if (Frog.scrollDirection === 1 && // if scrolling down
-      this.location.y > this.world.height + this.height / 2) { // obj appears below bottom border
-    Frog.updateCache(this);
-    SimpleSim.System.destroyItem(this); // destory this obj
+    throw new Error('ColorPalette: total colors must be greater than zero.');
   }
 
 };
 
+/**
+ * @returns An array representing a randomly selected color
+ *    from the colors property.
+ * @throws {Error} If the colors property is empty.
+ */
+ColorPalette.prototype.getColor = function() {
+
+  if (this._colors.length > 0) {
+    return this._colors[ColorPalette._getRandomNumber(0, this._colors.length - 1)];
+  } else {
+    throw new Error('ColorPalette.getColor: You must add colors via addColor() before using getColor().');
+  }
+};
+
+/**
+ * Renders a strip of colors representing the color range
+ * in the colors property.
+ *
+ * @param {Object} parent A DOM object to contain the color strip.
+ */
+ColorPalette.prototype.createSampleStrip = function(parent) {
+
+  var i, max, div;
+
+  for (i = 0, max = this._colors.length; i < max; i++) {
+    div = document.createElement('div');
+    div.className = 'color-sample-strip';
+    div.style.background = 'rgb(' + this._colors[i].toString() + ')';
+    parent.appendChild(div);
+  }
+};
+
+/**
+ * Creates an array of RGB color values interpolated between
+ * a passed startColor and endColor.
+ *
+ * @param {Array} startColor The beginning of the color array.
+ * @param {Array} startColor The end of the color array.
+ * @param {number} totalColors The total numnber of colors to create.
+ * @returns {Array} An array of color values.
+ */
+ColorPalette._createColorRange = function(startColor, endColor, totalColors) {
+
+  var i, colors = [],
+      startRed = startColor[0],
+      startGreen = startColor[1],
+      startBlue = startColor[2],
+      endRed = endColor[0],
+      endGreen = endColor[1],
+      endBlue = endColor[2],
+      diffRed, diffGreen, diffBlue,
+      newRed, newGreen, newBlue;
+
+  diffRed = endRed - startRed;
+  diffGreen = endGreen - startGreen;
+  diffBlue = endBlue - startBlue;
+
+  for (i = 0; i < totalColors; i++) {
+    newRed = parseInt(diffRed * i/totalColors, 10) + startRed;
+    newGreen = parseInt(diffGreen * i/totalColors, 10) + startGreen;
+    newBlue = parseInt(diffBlue * i/totalColors, 10) + startBlue;
+    colors.push([newRed, newGreen, newBlue]);
+  }
+  return colors;
+};
+
+ColorPalette._getRandomNumber = function(low, high, flt) {
+  if (flt) {
+    return Math.random()*(high-(low-1)) + low;
+  }
+  return Math.floor(Math.random()*(high-(low-1))) + low;
+};
+
+exports.ColorPalette = ColorPalette;
+
+/**
+   * Creates a new Frog.
+   *
+   * @param {Object} [opt_options=] A map of initial properties.
+   * @constructor
+   */
+  function Frog(opt_options) {
+    var options = opt_options || {};
+    SimpleSim.Item.call(this, options);
+  }
+  SimpleSim.Utils.extend(Frog, SimpleSim.Item);
+
+  /**
+   * Updates instance properties.
+   */
+  Frog.prototype.step = function() {
+
+    var props, before, after,
+        scrollDirection =  exports.Frogger.scrollDirection,
+        totalColumns =  exports.Frogger.totalColumns,
+        cache = exports.Frogger.cache;
+
+    this.location.y = this.initLocation.y + (window.pageYOffset * -this.scrollSpeed);
+
+    if ((scrollDirection === -1) && // if initial load or scrolling up
+        this.location.y < this.world.height + (this.height / 2)) { // obj appears above bottom border
+
+      after = SimpleSim.System.getAllItemsByAttribute('index', this.index + totalColumns)[0];
+
+      if (!after) { // if an obj does NOT exist under me
+        props = cache[this.index + totalColumns];
+        exports.Frogger.createFrog(this.index + totalColumns, props);
+      }
+    }
+
+    if (scrollDirection === 1 && // if scrolling down
+        this.location.y > this.height / 2) { // obj appears just below top border
+
+      before = SimpleSim.System.getAllItemsByAttribute('index', this.index - totalColumns)[0];
+
+      if (!before && this.index >= totalColumns) {
+        props = cache[this.index - totalColumns]; // recycling objects; use cache
+        exports.Frogger.createFrog(this.index - totalColumns, props);
+      }
+    }
+
+    if (scrollDirection === -1 && // if scrolling up
+        this.location.y < -this.height / 2) { // obj appears just above top border
+      exports.Frogger.updateCache(this);
+      SimpleSim.System.destroyItem(this); // destory this obj
+    }
+
+    if (scrollDirection === 1 && // if scrolling down
+        this.location.y > this.world.height + this.height / 2) { // obj appears below bottom border
+      exports.Frogger.updateCache(this);
+      SimpleSim.System.destroyItem(this); // destory this obj
+    }
+  };
+
+//});
 exports.Frog = Frog;
+
+function FrogNUX(opt_options) {
+  var options = opt_options || {};
+  SimpleSim.Item.call(this, options);
+}
+SimpleSim.Utils.extend(FrogNUX, SimpleSim.Item);
+
+FrogNUX.prototype.step = function() {};
+exports.FrogNUX = FrogNUX;
+
+/**
+   * @namespace
+   */
+  var Frogger = {};
+
+  /**
+   * The current viewport dimensions.
+   * @example
+   * {width: 1024, height: 768}
+   * @type {Object}
+   */
+  Frogger.viewportDimensions = null;
+
+  /**
+   * The scrollBlock creates available scrolling area.
+   * @type {Object}
+   */
+  Frogger.scrollBlock = null;
+
+  /**
+   * The current scroll direction.
+   * 1 = scroll up
+   * -1 = scroll down
+   * @type {Number}
+   */
+  Frogger.scrollDirection = -1;
+
+  /**
+   * The total distance scrolled in pixels.
+   * @type {Number}
+   */
+  Frogger.scrollDistance = 0;
+
+  /**
+   * Lower numbers = slower scrolling.
+   * @type {Number}
+   */
+  Frogger.scrollThrottle = 200;
+
+  /**
+   * Used to determine scroll direction.
+   * @type {Number}
+   */
+  Frogger.lastPageYOffset = 0;
+
+  /**
+   * The total number of scollable columns.
+   * @type {Number}
+   */
+  Frogger.totalColumns = 0;
+
+  /**
+   * Display properties from instances
+   * before they were destroyed.
+   * @type {Object}
+   */
+  Frogger.cache = {};
+
+  /**
+   * Should be called after a SimpleSim system
+   * has been initialized.
+   * @param {Object} opt_options A map of initial options.
+   */
+  Frogger.init = function(opt_options) {
+
+    var options = opt_options || {};
+    
+    this.OBJ_WIDTH = options.objWidth || 300;
+    this.OBJ_PADDING = options.objPadding || 20;
+    this.MIN_SCROLL_SPEED = options.minScrollSpeed || 0.4;
+    this.MAX_SCROLL_SPEED = options.maxScrollSpeed || 0.45;
+    this.INITIAL_Y_OFFSET = options.initialYOffset !== undefined ? options.initialYOffset : 0;
+
+    this.viewportDimensions = exports.Utils.getViewportSize();
+    this.scrollBlock = new exports.ScrollBlock(document.getElementById('scrollBlock'));
+    this.scrollBlock.el.style.height = Frogger.viewportDimensions.height + 10 + 'px';
+    this.setTotalColumns();
+
+    if (document.addEventListener) {
+      document.addEventListener('scroll', Frogger.onScroll, false);
+    } else if (document.attachEvent) {
+      document.attachEvent('onScroll', Frogger.onScroll);
+    }
+    window.scrollTo(0, 0);
+  };
+
+  /**
+   * Adds a new FrogNUX to the system.
+   * @param {Object} opt_options A map of initial properties.
+   * @return {Object} An instance of FrogNUX.
+   */
+  Frogger.createFrogNUX = function(opt_options) {
+    
+    var options = opt_options || {}, props = {};
+
+    props.color = options.color || [255, 255, 255];
+    props.width =  options.width;
+
+    // TEMPORARY
+    var innerContainer = document.createElement('div');
+    innerContainer.className = 'innerContainer';
+    var color = this.palette.getColor();
+    innerContainer.style.backgroundColor = 'rgb(' + color[0] + ', ' + color[1] + ', ' + color[2] + ')';
+    innerContainer.textContent = 'NUX';
+    props.html = options.html || innerContainer;
+
+    /**
+     * Some properties are not optional.
+     */
+    props.name = 'FrogNUX';
+    props.height = 380;
+    props.opacity = 1;
+    props.borderRadius = 10;
+    props.zIndex = 1;
+
+    var x = props.width / 2 + (this.viewportDimensions.width - props.width) / 2;
+
+    props.location = new SimpleSim.Vector(x, props.height / 2 + 20);
+
+    /**
+     * Create the object.
+     */
+    var obj = SimpleSim.System.add('FrogNUX', props);
+
+    // add html to container
+    obj.el.innerHTML = '';
+    obj.el.appendChild(props.html);
+
+  };
+
+  /**
+   * Adds a new FroggerMenu to the system.
+   * @param {Object} opt_options A map of initial properties.
+   * @return {Object} An instance of FrogNUX.
+   */
+  Frogger.createFroggerMenu = function(opt_options) {
+    
+    var options = opt_options || {}, props = {};
+
+    props.color = options.color || [255, 255, 255];
+    props.width =  options.width;
+
+    // TEMPORARY
+    var innerContainer = document.createElement('div');
+    innerContainer.className = 'innerContainer';
+    var color = this.palette.getColor();
+    innerContainer.style.backgroundColor = 'rgb(' + color[0] + ', ' + color[1] + ', ' + color[2] + ')';
+    innerContainer.textContent = 'Menu';
+    props.html = options.html || innerContainer;
+
+    /**
+     * Some properties are not optional.
+     */
+    props.name = 'FroggerMenu';
+    props.height = 60;
+    props.opacity = 1;
+    props.zIndex = 2;
+
+    var x = props.width / 2 + (this.viewportDimensions.width - props.width) / 2;
+
+    props.location = new SimpleSim.Vector(x, this.viewportDimensions.height - props.height / 2);
+
+    /**
+     * Create the object.
+     */
+    var obj = SimpleSim.System.add('FroggerMenu', props);
+
+    // add html to container
+    obj.el.innerHTML = '';
+    obj.el.appendChild(props.html);
+
+  };
+
+  /**
+   * Adds a new Frog to the system.
+   * @param {number} i An index.
+   * @param {Object} opt_options A map of initial properties.
+   * @return {Object} An instance of Frog.
+   */
+  Frogger.createFrog = function(i, opt_options) {
+
+    var options = opt_options || {}, props = {},
+        myCol = i % this.totalColumns,
+        scrollSpeed = myCol % 2 ?  this.MAX_SCROLL_SPEED :  this.MIN_SCROLL_SPEED;
+
+    /**
+     * If a story has been cached (ie. in the object pool),
+     * its properties will be passed via the opt_options argument.
+     * Set these properties first.
+     */
+    props.height = options.height || this.OBJ_WIDTH;
+    props.color = options.color || [255, 255, 255];
+    props.text = options.text || i;
+
+    // TEMPORARY
+    var innerContainer = document.createElement('div');
+    innerContainer.className = 'innerContainer';
+    var color = this.palette.getColor();
+    innerContainer.style.backgroundColor = 'rgb(' + color[0] + ', ' + color[1] + ', ' + color[2] + ')';
+    innerContainer.style.borderRadius = '10%';
+    innerContainer.textContent = props.text;
+    innerContainer.addEventListener('mouseup', function(e) {
+      alert(e.target.textContent);
+    }, false);
+    props.html = options.html || innerContainer;
+
+    /**
+     * Some properties are not optional.
+     */
+    props.index = i;
+    props.name = 'Frog';
+    props.width =  this.OBJ_WIDTH;
+    props.opacity = 1;
+    props.borderRadius = 10;
+    props.zIndex = 0;
+    
+    /**
+     * Calculate the object's position based on its
+     * index and height.
+     */
+    var position = this.positionObj(props.index, props.height);
+    props.initLocation = new SimpleSim.Vector(position.x, position.y + this.scrollDistance * scrollSpeed);
+    props.location = new SimpleSim.Vector(position.x, position.y);
+    props.scrollSpeed = scrollSpeed;
+    props.myCol = myCol;
+
+    /**
+     * Create the object.
+     */
+    var obj = SimpleSim.System.add('Frog', props);
+
+    // add html to container
+    obj.el.innerHTML = '';
+    obj.el.appendChild(props.html);
+
+    return obj;
+  };
+
+  /**
+   * Positions a frog based on an index and height.
+   * @param {number} i An index.
+   * @param {number} height The frog's height.
+   * @return {Object} A map of x and y coordinates.
+   */
+  Frogger.positionObj = function(i, height) {
+
+    var totalColumns = this.totalColumns,
+        objWidth = this.OBJ_WIDTH,
+        objPadding = this.OBJ_PADDING,
+        scrollDirection = this.scrollDirection,
+        myCol = i % this.totalColumns,
+        position = {}, neighbor, neighborOffset, myOffset, paddingOffset;
+
+    // determines offset needed to center group of stories
+    var xOffset = (this.viewportDimensions.width - ((totalColumns * objWidth) + (totalColumns + 1) * objPadding)) / 2;
+
+    position.x = objWidth * myCol + // centers story at location
+        objWidth / 2 + // moves story origin to its left edge
+        objPadding * (myCol + 1) + // adds padding
+        xOffset; // add centering offset
+
+    neighbor = SimpleSim.System.getAllItemsByAttribute('index', i + totalColumns * scrollDirection)[0];
+    if (neighbor) { // position obj relative to its neighbor
+      neighborOffset = neighbor.height / 2 * -scrollDirection; // the neighbor's position
+      myOffset = height / 2 * -scrollDirection; // add this object's height
+      paddingOffset = objPadding * -scrollDirection; // add padding
+      position.y = neighbor.location.y + neighborOffset + myOffset + paddingOffset;
+    } else {
+      position.y = height / 2 + objPadding + this.INITIAL_Y_OFFSET; // the first row
+    }
+    
+    return position;
+  };
+
+  /**
+   * Handles the scroll event.
+   */
+  Frogger.onScroll = function() {
+
+    var scrollOffset;
+
+    Frogger.scrollDirection = Frogger.lastPageYOffset > window.pageYOffset ? 1 : -1;
+    Frogger.scrollSpeed = Frogger.lastPageYOffset - window.pageYOffset;
+    Frogger.lastPageYOffset = window.pageYOffset;
+    Frogger.scrollDistance = window.pageYOffset;
+
+    scrollOffset = Frogger.viewportDimensions.height + window.pageYOffset + Frogger.scrollThrottle;
+
+    if (Frogger.scrollBlock.height < scrollOffset && !Frogger.fetching) {
+      Frogger.scrollBlock.height = scrollOffset;
+      Frogger.scrollBlock.el.style.height = Frogger.scrollBlock.height + 'px';
+    }
+
+    if (!SimpleSim.System._updating) {
+      SimpleSim.System._update();
+    }
+  };
+
+  /**
+   * Sets the total number of scrollable columns.
+   */
+  Frogger.setTotalColumns = function() {
+    this.totalColumns = Math.floor(this.viewportDimensions.width /
+        (this.OBJ_WIDTH + this.OBJ_PADDING));
+  };
+
+  /**
+   * Stores display properties from instances before they
+   * were destroyed.
+   *
+   * @param  {Object} obj A map of properties.
+   */
+  Frogger.updateCache = function(obj) {
+    this.cache[obj.index] = {
+      height: obj.height,
+      html: obj.html
+    };
+  };
+
+  /**
+   * Resets page and recreates intial objects.
+   */
+  Frogger.reflowObjs = function() {
+
+    var i, max, objs = SimpleSim.System.getAllItemsByName('Frog');
+
+    Frogger.viewportDimensions = exports.Utils.getViewportSize();
+
+    for (i = 0, max = objs.length; i < max; i++) {
+      SimpleSim.System.destroyItem(objs[i]);
+    }
+
+    Frogger.scrollDistance = 0;
+    Frogger.setTotalColumns();
+    Frogger.scrollDirection = -1;
+    Frogger.scrollBlock.el.style.height = Frogger.viewportDimensions.height + 10 + 'px';
+
+    window.scrollTo(0, 0);
+
+    for (i = 0; i <  Frogger.totalColumns; i++) {
+      //Frogger.createFrog(i, Frogger.cache[i]);
+    }
+
+    Frogger.createFrogNUX();
+  };
+
+  /**
+   * If passed option is true, returns the length of the
+   * tallest column in pixels. If passed option is false,
+   * returns the length of the shortest column in pixels.
+   *
+   * @param {boolean} opt_tallest True returns tallest column length.
+   * @return {number} A length in pixels.
+   */
+  Frogger.getMinMaxColumn = function(opt_tallest) {
+
+    var i, max, obj, objs = SimpleSim.System.getAllItemsByName('Frog');
+
+    var columns = {
+      lookup: {},
+      list: []
+    };
+
+    for (i = 0, max = objs.length; i < max; i++) {
+      obj = objs[i];
+      if (!columns.lookup[obj.myCol]) {
+        columns.lookup[obj.myCol] = 0;
+      }
+      columns.lookup[obj.myCol] += obj.height + exports.Frogger.OBJ_PADDING + this.INITIAL_Y_OFFSET;
+    }
+   
+    for (i in columns.lookup) {
+      if (columns.lookup.hasOwnProperty(i)) {
+        columns.list.push(columns.lookup[i]);
+      }
+    }
+    if (!opt_tallest) {
+      columns.list.sort(function(a,b){return a-b;});
+    } else {
+      columns.list.sort(function(a,b){return b-a;});
+    }
+    return columns.list[0];
+  };
+
+  Frogger.getFrogAreaWidth = function() {
+    return this.totalColumns * this.OBJ_WIDTH + (this.totalColumns - 1) * this.OBJ_PADDING;
+  };
+
+  //
+  // Temporary
+  //
+
+  var palette = new exports.ColorPalette();
+  palette.addColor({
+    min: 12,
+    max: 24,
+    startColor: [196, 213, 86],
+    endColor: [166, 183, 56]
+  }).addColor({
+    min: 12,
+    max: 24,
+    startColor: [56, 139, 126],
+    endColor: [26, 109, 96]
+  }).addColor({
+    min: 12,
+    max: 24,
+    startColor: [104, 233, 212],
+    endColor: [74, 203, 182]
+  }).addColor({
+    min: 12,
+    max: 24,
+    startColor: [233, 158, 104],
+    endColor: [203, 128, 74]
+  }).addColor({
+    min: 12,
+    max: 24,
+    startColor: [191, 75, 49],
+    endColor: [171, 55, 19]
+  });
+  Frogger.palette = palette;
+
+//});
+
+exports.Frogger = Frogger;
+
+function FroggerMenu(opt_options) {
+  var options = opt_options || {};
+  SimpleSim.Item.call(this, options);
+}
+SimpleSim.Utils.extend(FroggerMenu, SimpleSim.Item);
+
+FroggerMenu.prototype.step = function() {
+
+  if (exports.Frogger.scrollSpeed) {
+    this.location.y = this.initLocation.y + (window.pageYOffset) * 0.1;
+  } else {
+    this.location.y = this.initLocation.y;
+  }
+    
+};
+exports.FroggerMenu = FroggerMenu;
+
+function ScrollBlock(el, opt_options) {
+  var options = opt_options || {};
+  if (!el) {
+    throw new Error('A DOM element is required for a new ScrollBlock.');
+  }
+  this.el = el;
+  this.height = 0;
+}
+
+exports.ScrollBlock = ScrollBlock;
+
+/**
+ * Creates a new StatsDisplay object.
+ *
+ * Use this class to create a field in the
+ * top-left corner that displays the current
+ * frames per second and total number of elements
+ * processed in the System.animLoop.
+ *
+ * Note: StatsDisplay will not function in browsers
+ * whose Date object does not support Date.now().
+ * These include IE6, IE7, and IE8.
+ *
+ * @constructor
+ */
+function StatsDisplay() {
+
+  var labelContainer, label;
+
+  this.name = 'StatsDisplay';
+
+  /**
+   * Set to false to stop requesting animation frames.
+   * @private
+   */
+  this._active = true;
+
+  /**
+   * Frames per second.
+   * @private
+   */
+  this._fps = 0;
+
+  /**
+   * The current time.
+   * @private
+   */
+  if (Date.now) {
+    this._time = Date.now();
+  } else {
+    this._time = 0;
+  }
+
+  /**
+   * The time at the last frame.
+   * @private
+   */
+  this._timeLastFrame = this._time;
+
+  /**
+   * The time the last second was sampled.
+   * @private
+   */
+  this._timeLastSecond = this._time;
+
+  /**
+   * Holds the total number of frames
+   * between seconds.
+   * @private
+   */
+  this._frameCount = 0;
+
+  /**
+   * A reference to the DOM element containing the display.
+   * @private
+   */
+  this.el = document.createElement('div');
+  this.el.id = 'statsDisplay';
+  this.el.className = 'statsDisplay';
+  this.el.style.backgroundColor = 'black';
+  this.el.style.color = 'white';
+  this.el.style.fontFamily = 'Helvetica';
+  this.el.style.padding = '0.5em';
+  this.el.style.opacity = '0.5';
+  this.el.style.position = 'fixed';
+  this.el.style.top = 0;
+  this.el.style.left = 0;
+
+  /**
+   * A reference to the textNode displaying the total number of elements.
+   * @private
+   */
+  this._totalElementsValue = null;
+
+  /**
+   * A reference to the textNode displaying the frame per second.
+   * @private
+   */
+  this._fpsValue = null;
+
+  // create totol elements label
+  labelContainer = document.createElement('span');
+  labelContainer.className = 'statsDisplayLabel';
+  labelContainer.style.marginLeft = '0.5em';
+  label = document.createTextNode('total elements: ');
+  labelContainer.appendChild(label);
+  this.el.appendChild(labelContainer);
+
+  // create textNode for totalElements
+  this._totalElementsValue = document.createTextNode('0');
+  this.el.appendChild(this._totalElementsValue);
+
+  // create fps label
+  labelContainer = document.createElement('span');
+  labelContainer.className = 'statsDisplayLabel';
+  labelContainer.style.marginLeft = '0.5em';
+  label = document.createTextNode('fps: ');
+  labelContainer.appendChild(label);
+  this.el.appendChild(labelContainer);
+
+  // create textNode for fps
+  this._fpsValue = document.createTextNode('0');
+  this.el.appendChild(this._fpsValue);
+
+  document.body.appendChild(this.el);
+
+  /**
+   * Initiates the requestAnimFrame() loop.
+   */
+  this._update(this);
+}
+
+/**
+ * Returns the current frames per second value.
+ * @returns {number} Frame per second.
+ */
+StatsDisplay.prototype.getFPS = function() {
+  return this._fps;
+};
+
+/**
+ * If 1000ms have elapsed since the last evaluated second,
+ * _fps is assigned the total number of frames rendered and
+ * its corresponding textNode is updated. The total number of
+ * elements is also updated.
+ *
+ * This function is called again via requestAnimFrame().
+ *
+ * @private
+ */
+StatsDisplay.prototype._update = function(me) {
+
+  var elementCount = SimpleSim.System._records.list.length;
+
+  if (Date.now) {
+    me._time = Date.now();
+  } else {
+    me._time = 0;
+  }
+  me._frameCount++;
+
+  // at least a second has passed
+  if (me._time > me._timeLastSecond + 1000) {
+
+    me._fps = me._frameCount;
+    me._timeLastSecond = me._time;
+    me._frameCount = 0;
+
+    me._fpsValue.nodeValue = me._fps;
+    me._totalElementsValue.nodeValue = elementCount;
+  }
+
+  var reqAnimFrame = (function (me) {
+    return (function() {
+      me._update(me);
+    });
+  })(this);
+
+  if (this._active) {
+    window.requestAnimFrame(reqAnimFrame);
+  }
+};
+
+/**
+ * Removes statsDisplay from DOM.
+ */
+StatsDisplay.prototype.destroy = function() {
+  this._active = false;
+  if (document.getElementById(this.el.id)) {
+    document.body.removeChild(this.el);
+  }
+};
+
+exports.StatsDisplay = StatsDisplay;
+
+var Utils = {};
+
+/**
+ * Determines the size of the browser viewport.
+ *
+ * @returns {Object} The current browser viewport width and height.
+ * @private
+ */
+Utils.getViewportSize = function() {
+
+  var d = {};
+
+  if (typeof(window.innerWidth) !== 'undefined') {
+    d.width = window.innerWidth;
+    d.height = window.innerHeight;
+  } else if (typeof(document.documentElement) !== 'undefined' &&
+      typeof(document.documentElement.clientWidth) !== 'undefined') {
+    d.width = document.documentElement.clientWidth;
+    d.height = document.documentElement.clientHeight;
+  } else if (typeof(document.body) !== 'undefined') {
+    d.width = document.body.clientWidth;
+    d.height = document.body.clientHeight;
+  } else {
+    d.width = undefined;
+    d.height = undefined;
+  }
+  return d;
+};
+
+/**
+ * Adds an event listener.
+ *
+ * @param {Object} target The element to receive the event listener.
+ * @param {string} eventType The event type.
+ * @param {function} The function to run when the event is triggered.
+ * @private
+ */
+Utils._addEvent = function(target, eventType, handler) {
+  if (target.addEventListener) { // W3C
+    target.addEventListener(eventType, handler, false);
+  } else if (target.attachEvent) { // IE
+    target.attachEvent("on" + eventType, handler);
+  }
+};
+
+/**
+ * Extends the properties and methods of a superClass onto a subClass.
+ *
+ * @param {Object} subClass The subClass.
+ * @param {Object} superClass The superClass.
+ */
+Utils.extend = function(subClass, superClass) {
+  function F() {}
+  F.prototype = superClass.prototype;
+  subClass.prototype = new F;
+  subClass.prototype.constructor = subClass;
+};
+
+
+/**
+ * Generates a psuedo-random number within a range.
+ *
+ * @param {number} low The low end of the range.
+ * @param {number} high The high end of the range.
+ * @param {boolean} [flt] Set to true to return a float.
+ * @returns {number} A number.
+ */
+Utils.getRandomNumber = function(low, high, flt) {
+  if (flt) {
+    return Math.random()*(high-(low-1)) + low;
+  }
+  return Math.floor(Math.random()*(high-(low-1))) + low;
+};
+
+exports.Utils = Utils;
 
 }(exports));
