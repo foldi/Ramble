@@ -57,7 +57,7 @@ Driver.totalColumns = 0;
 Driver.cache = {};
 
 /**
- * Should be called after a SimpleSim system
+ * Should be called after a Burner system
  * has been initialized.
  * @param {Object} opt_options A map of initial options.
  */
@@ -158,15 +158,15 @@ Driver.createRider = function(i, opt_options) {
    * index and height.
    */
   var position = this.positionObj(props.index, props.width, props.height);
-  props.initLocation = new SimpleSim.Vector(position.x, position.y + this.scrollDistance * scrollSpeed);
-  props.location = new SimpleSim.Vector(position.x, position.y);
+  props.initLocation = new Burner.Vector(position.x, position.y + this.scrollDistance * scrollSpeed);
+  props.location = new Burner.Vector(position.x, position.y);
   props.scrollSpeed = scrollSpeed;
   props.myCol = myCol;
 
   /**
    * Create the object.
    */
-  var obj = SimpleSim.System.add('Rider', props);
+  var obj = Burner.System.add('Rider', props);
 
   // add html to container
   //obj.el.textContent = props.text;
@@ -199,7 +199,7 @@ Driver.positionObj = function(i, width, height) {
       objPadding * (myCol + 1) + // adds padding
       xOffset; // add centering offset
 
-  neighbor = SimpleSim.System.getAllItemsByAttribute('index', i + totalColumns * scrollDirection)[0];
+  neighbor = Burner.System.getAllItemsByAttribute('index', i + totalColumns * scrollDirection)[0];
   if (neighbor) { // position obj relative to its neighbor
     neighborOffset = neighbor.height / 2 * -scrollDirection; // the neighbor's position
     myOffset = height / 2 * -scrollDirection; // add this object's height
@@ -238,8 +238,8 @@ Driver.onScroll = function() {
     Driver.scrollBlock.el.style.height = Driver.scrollBlock.height + 'px';
   }*/
 
-  if (!SimpleSim.System._updating) {
-    SimpleSim.System._update();
+  if (!Burner.System._updating) {
+    //Burner.System._update();
   }
 };
 
@@ -290,12 +290,12 @@ Driver.updateCache = function(obj) {
  */
 Driver.reflowObjs = function() {
 
-  var i, max, objs = SimpleSim.System.getAllItemsByName('Rider');
+  var i, max, objs = Burner.System.getAllItemsByName('Rider');
 
   Driver.viewportDimensions = exports.Utils.getViewportSize();
 
   for (i = 0, max = objs.length; i < max; i++) {
-    SimpleSim.System.destroyItem(objs[i]);
+    Burner.System.destroyItem(objs[i]);
   }
 
   Driver.scrollDistance = 0;
@@ -322,7 +322,7 @@ Driver.reflowObjs = function() {
  */
 Driver.getMinMaxColumn = function(opt_tallest) {
 
-  var i, max, obj, objs = SimpleSim.System.getAllItemsByName('Rider');
+  var i, max, obj, objs = Burner.System.getAllItemsByName('Rider');
 
   var columns = {
     lookup: {},

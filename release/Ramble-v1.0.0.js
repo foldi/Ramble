@@ -1,4 +1,4 @@
-/*! Ramble v1.0.0 - 2013-08-23 06:08:38 
+/*! Ramble v1.0.0 - 2013-08-24 01:08:54 
  *  Vince Allen 
  *  Brooklyn, NY 
  *  vince@vinceallen.com 
@@ -232,7 +232,7 @@ Driver.totalColumns = 0;
 Driver.cache = {};
 
 /**
- * Should be called after a SimpleSim system
+ * Should be called after a Burner system
  * has been initialized.
  * @param {Object} opt_options A map of initial options.
  */
@@ -333,15 +333,15 @@ Driver.createRider = function(i, opt_options) {
    * index and height.
    */
   var position = this.positionObj(props.index, props.width, props.height);
-  props.initLocation = new SimpleSim.Vector(position.x, position.y + this.scrollDistance * scrollSpeed);
-  props.location = new SimpleSim.Vector(position.x, position.y);
+  props.initLocation = new Burner.Vector(position.x, position.y + this.scrollDistance * scrollSpeed);
+  props.location = new Burner.Vector(position.x, position.y);
   props.scrollSpeed = scrollSpeed;
   props.myCol = myCol;
 
   /**
    * Create the object.
    */
-  var obj = SimpleSim.System.add('Rider', props);
+  var obj = Burner.System.add('Rider', props);
 
   // add html to container
   //obj.el.textContent = props.text;
@@ -374,7 +374,7 @@ Driver.positionObj = function(i, width, height) {
       objPadding * (myCol + 1) + // adds padding
       xOffset; // add centering offset
 
-  neighbor = SimpleSim.System.getAllItemsByAttribute('index', i + totalColumns * scrollDirection)[0];
+  neighbor = Burner.System.getAllItemsByAttribute('index', i + totalColumns * scrollDirection)[0];
   if (neighbor) { // position obj relative to its neighbor
     neighborOffset = neighbor.height / 2 * -scrollDirection; // the neighbor's position
     myOffset = height / 2 * -scrollDirection; // add this object's height
@@ -413,8 +413,8 @@ Driver.onScroll = function() {
     Driver.scrollBlock.el.style.height = Driver.scrollBlock.height + 'px';
   }*/
 
-  if (!SimpleSim.System._updating) {
-    SimpleSim.System._update();
+  if (!Burner.System._updating) {
+    //Burner.System._update();
   }
 };
 
@@ -465,12 +465,12 @@ Driver.updateCache = function(obj) {
  */
 Driver.reflowObjs = function() {
 
-  var i, max, objs = SimpleSim.System.getAllItemsByName('Rider');
+  var i, max, objs = Burner.System.getAllItemsByName('Rider');
 
   Driver.viewportDimensions = exports.Utils.getViewportSize();
 
   for (i = 0, max = objs.length; i < max; i++) {
-    SimpleSim.System.destroyItem(objs[i]);
+    Burner.System.destroyItem(objs[i]);
   }
 
   Driver.scrollDistance = 0;
@@ -497,7 +497,7 @@ Driver.reflowObjs = function() {
  */
 Driver.getMinMaxColumn = function(opt_tallest) {
 
-  var i, max, obj, objs = SimpleSim.System.getAllItemsByName('Rider');
+  var i, max, obj, objs = Burner.System.getAllItemsByName('Rider');
 
   var columns = {
     lookup: {},
@@ -529,10 +529,12 @@ exports.Driver = Driver;
 
 function Rider(opt_options) {
   var options = opt_options || {};
-  this.scrollVector = new SimpleSim.Vector();
-  SimpleSim.Item.call(this, options);
+  this.scrollVector = new Burner.Vector();
+  Burner.Item.call(this, options);
 }
-SimpleSim.Utils.extend(Rider, SimpleSim.Item);
+Burner.System.extend(Rider, Burner.Item);
+
+Rider.prototype.init = function() {};
 
 /**
  * Updates instance properties.
@@ -562,7 +564,7 @@ Rider.prototype.step = function() {
 
   if (scrollDirection === -1 && // if initial load or scrolling up
       top + height < Driver.viewportDimensions.height) { // obj appears above bottom border
-    after = SimpleSim.System.getAllItemsByAttribute('index', this.index + totalColumns)[0];
+    after = Burner.System.getAllItemsByAttribute('index', this.index + totalColumns)[0];
     if (!after) { // if an obj does NOT exist under me
       props = cache[this.index + totalColumns];
       exports.Driver.createRider(this.index + totalColumns, props);
@@ -570,7 +572,7 @@ Rider.prototype.step = function() {
   }
 
   if (scrollDirection === 1 && top > 0) { // if scrolling down; obj appears just below top border
-    before = SimpleSim.System.getAllItemsByAttribute('index', this.index - totalColumns)[0];
+    before = Burner.System.getAllItemsByAttribute('index', this.index - totalColumns)[0];
     if (!before && this.index >= totalColumns) {
       props = cache[this.index - totalColumns]; // recycling objects; use cache
       exports.Driver.createRider(this.index - totalColumns, props);
@@ -579,12 +581,12 @@ Rider.prototype.step = function() {
 
   if (scrollDirection === -1 && top + height < 0) { // if scrolling up; obj appears just above top border
     exports.Driver.updateCache(this);
-    SimpleSim.System.destroyItem(this); // destory this obj
+    Burner.System.destroyItem(this); // destory this obj
   }
 
   if (scrollDirection === 1 && top > Driver.viewportDimensions.height) { // if scrolling down; obj appears below bottom border
     exports.Driver.updateCache(this);
-    SimpleSim.System.destroyItem(this); // destory this obj
+    Burner.System.destroyItem(this); // destory this obj
   }
 };
 exports.Rider = Rider;
@@ -749,7 +751,7 @@ StatsDisplay.prototype.getFPS = function() {
  */
 StatsDisplay.prototype._update = function(me) {
 
-  var elementCount = SimpleSim.System._records.list.length;
+  var elementCount = Burner.System._records.list.length;
 
   if (Date.now) {
     me._time = Date.now();

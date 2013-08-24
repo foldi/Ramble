@@ -140,7 +140,7 @@ StatsDisplay.prototype.getFPS = function() {
  */
 StatsDisplay.prototype._update = function(me) {
 
-  var elementCount = SimpleSim.System._records.list.length;
+  var elementCount = Burner.System._records.list.length;
 
   if (Date.now) {
     me._time = Date.now();
