@@ -61,12 +61,14 @@
       window.scrollTo(0, 0);
 
       Ramble.Driver.init({
-        objPadding: 80,
-        objWidth: 120,
-        minScrollSpeed: 0.4,
-        maxScrollSpeed: 0.4,
+        objPadding: 60,
+        objMinWidth: 60,
+        objMaxWidth: 120,
+        minScrollSpeed: 0.1,
+        maxScrollSpeed: 0.2,
         scrollBlockHeight: 1000000,
-        palette: null
+        palette: palette,
+        speedPropToMass: true
       });
 
       for (var i = 0; i < Ramble.Driver.totalColumns; i++) { // create first row

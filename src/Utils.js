@@ -71,3 +71,19 @@ Utils.getRandomNumber = function(low, high, flt) {
   }
   return Math.floor(Math.random()*(high-(low-1))) + low;
 };
+
+/**
+ * Re-maps a number from one range to another.
+ *
+ * @param {number} value The value to be converted.
+ * @param {number} min1 Lower bound of the value's current range.
+ * @param {number} max1 Upper bound of the value's current range.
+ * @param {number} min2 Lower bound of the value's target range.
+ * @param {number} max2 Upper bound of the value's target range.
+ * @returns {number} A number.
+ */
+Utils.map = function(value, min1, max1, min2, max2) { // returns a new value relative to a new range
+  var unitratio = (value - min1) / (max1 - min1);
+  return (unitratio * (max2 - min2)) + min2;
+};
+

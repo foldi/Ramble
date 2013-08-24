@@ -52,7 +52,7 @@ Item.prototype.init = function(opt_options) {
   this.initLocation = options.initLocation || new exports.Vector(this.location.x, this.location.y);
   this.width = options.width || 20;
   this.height = options.height || 20;
-  this.mass = (this.width * this.height) * 0.025;
+  this.mass = options.mass || (this.width * this.height) * 0.025;
   this.color = options.color || [0, 0, 0];
   this.visibility = options.visibility || 'visible';
   this.maxSpeed = options.maxSpeed || 5;
@@ -186,6 +186,12 @@ System._resizeTime = 0;
 System._lastPageYOffset = 0;
 
 /**
+ * While > 0, raf can be called.
+ * @type {Number}
+ */
+System._updateBuffer = 90;
+
+/**
  * Increments idCount and returns the value.
  */
 System.getNewId = function() {
@@ -313,16 +319,32 @@ System._update = function() {
   for (i = records.length - 1; i >= 0; i -= 1) {
     records[i].draw();
   }
-  
+
   /**
    * Only call raf if page is scrolling.
    */
   if (window.pageYOffset - System._lastPageYOffset || System._resizeTime) {
     window.requestAnimFrame(System._update);
     System._updating = true;
+    System._updateBuffer = 90;
+  } else {
+    if (System._updateBuffer) {
+      System._updateBuffer--;
+      window.requestAnimFrame(System._update);
+    } else {
+      System._updating = false;
+    }
+  }
+
+  /**
+   * Only call raf if page is scrolling.
+   */
+  /*if (window.pageYOffset - System._lastPageYOffset || System._resizeTime) {
+    window.requestAnimFrame(System._update);
+    System._updating = true;
   } else {
     System._updating = false;
-  }
+  }*/
 
   System._lastPageYOffset = window.pageYOffset;
 };
@@ -344,7 +366,12 @@ System._draw = function(obj) {
     zIndex: obj.zIndex,
     visibility: obj.visibility,
     borderRadius: obj.borderRadius,
-    a: obj.angle
+    a: obj.angle,
+    lineHeight: obj.lineHeight,
+    borderWidth: obj.borderWidth,
+    borderColor: obj.borderColor,
+    borderStyle: obj.borderStyle,
+    fontSize: obj.fontSize
   });
   obj.el.style.cssText = cssText;
 };
@@ -358,7 +385,7 @@ System.getCSSText = function(props) {
   return this._stylePosition.replace(/<x>/g, props.x).replace(/<y>/g, props.y).replace(/<a>/g, props.a) + ' width: ' +
       props.width + 'px; height: ' + props.height + 'px; background-color: ' +
       'rgb(' + props.color0 + ', ' + props.color1 + ', ' + props.color2 + ');' +
-      'opacity: ' + props.opacity + '; z-index: ' + props.zIndex + '; visibility: ' +
+      'opacity: ' + props.opacity + '; font-size: ' + props.fontSize + 'em; border-width: ' + props.borderWidth + 'px; border-style: ' + props.borderStyle + '; border-color: ' + props.borderColor + '; line-height: ' + props.lineHeight + 'px; z-index: ' + props.zIndex + '; visibility: ' +
       props.visibility + '; border-radius: ' + props.borderRadius + '%';
 };
 
