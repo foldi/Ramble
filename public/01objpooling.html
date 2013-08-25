@@ -11,7 +11,6 @@
   <script src='scripts/Ramble.js' type='text/javascript' charset='utf-8'></script>
   </head>
   <body>
-    <div id='worldA'></div>
     <div id='scrollBlock'></div>
     <script type='text/javascript' charset='utf-8'>
 
@@ -46,42 +45,21 @@
       var system = Burner.System;
       Burner.Classes = Ramble;
 
-      var world = new Burner.World(document.getElementById('worldA'),{
-        color: [220, 220, 220]
-      });
-      world.afterResize = Ramble.Driver.reflowObjs;
-
-      system.init(null, world, null, true);
-
-      //system._records.list[0].afterResize = Ramble.Driver.reflowObjs;
-
       window.scrollTo(0, 0);
 
       Ramble.Driver.init({
-        objPadding: 80,
+        system: system,
+        objPadding: 100,
         objMinWidth: 120,
         objMaxWidth: 120,
         minScrollSpeed: 0.4,
         maxScrollSpeed: 0.4,
-        scrollBlockHeight: 1000000,
+        scrollBlockHeight: 2000,
+        scrollBlockBuffer: 2000,
         palette: null
       });
 
-      for (var i = 0; i < Ramble.Driver.totalColumns; i++) { // create first row
-        Ramble.Driver.createRider(i);
-      }
-
-      system.start();
-
-      /*var shortestColumn = 0;
-      while(shortestColumn < Ramble.Driver.viewportDimensions.height) {
-        system._update();
-        shortestColumn = Ramble.Driver.getMinMaxColumn();
-      }*/
-
-      //system._update();
-
-      //`var statsDisplay = new Ramble.StatsDisplay();
+      var statsDisplay = new Ramble.StatsDisplay();
 
     </script>
   </body>

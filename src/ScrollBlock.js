@@ -15,13 +15,15 @@ function ScrollBlock(el, opt_options) {
     throw new Error('A DOM element is required for a new ScrollBlock.');
   }
   this.el = el;
-  this.height = options.height || ScrollBlock.heightBuffer;
+  this.heightBuffer = options.heightBuffer;
+  this.height = options.height;
   this.el.style.height = this.height + 'px';
 }
 
-ScrollBlock.heightBuffer = 10000;
+//ScrollBlock.heightBuffer = 10;
 
-ScrollBlock.prototype.addHeight = function() {
-	Driver.scrollBlock.height += ScrollBlock.heightBuffer;
-  Driver.scrollBlock.el.style.height = Driver.scrollBlock.height + 'px';
+ScrollBlock.prototype.addHeight = function(opt_val) {
+	var val = opt_val || this.heightBuffer;
+	this.height += val;
+  this.el.style.height = this.height + 'px';
 };

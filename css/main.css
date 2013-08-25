@@ -18,10 +18,12 @@ body {
   display: block;
 }
 
-#worldA {
+.world {
   position: fixed;
   top: 0;
   left: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .rider {
@@ -29,7 +31,8 @@ body {
   text-align: center;
   font-size: 24px;
   font-family: "Helvetica Neue";
-  border-radius: 40px;
+
+  margin-bottom: 100px;
 }
 
 .innerContainer {
@@ -57,4 +60,8 @@ body {
   -o-box-sizing:border-box;
   -ms-box-sizing:border-box;
   box-sizing:border-box;
+}
+
+#scrollBlock {
+  width: 1px;
 }

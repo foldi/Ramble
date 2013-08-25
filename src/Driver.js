@@ -32,12 +32,6 @@ Driver.scrollDirection = -1;
 Driver.scrollDistance = 0;
 
 /**
- * Lower numbers = slower scrolling.
- * @type {Number}
- */
-Driver.scrollThrottle = 0;
-
-/**
  * Used to determine scroll direction.
  * @type {Number}
  */
@@ -56,31 +50,78 @@ Driver.totalColumns = 0;
  */
 Driver.cache = {};
 
-/**
- * Should be called after a Burner system
- * has been initialized.
- * @param {Object} opt_options A map of initial options.
- */
+Driver.MAX_LANES = 1;
+
+Driver.INITIAL_Y_OFFSET = 0;
+
 Driver.init = function(opt_options) {
 
-  var options = opt_options || {};
+  var i, max, options = opt_options || {},
+      worlds;
 
-  //this.OBJ_WIDTH = options.objWidth || 300;
   this.OBJ_MIN_WIDTH = options.objMinWidth || 60;
   this.OBJ_MAX_WIDTH = options.objMaxWidth || 120;
   this.OBJ_PADDING = options.objPadding || 20;
   this.MIN_SCROLL_SPEED = options.minScrollSpeed || 0.4;
   this.MAX_SCROLL_SPEED = options.maxScrollSpeed || 0.45;
-  this.INITIAL_Y_OFFSET = options.initialYOffset || 0;
-  this.palette = options.palette || null;
-  this.speedPropToMass = options.speedPropToMass || false;
+  this.CONTENT_CONTAINER = options.CONTENT_CONTAINER || document.body;
 
-  this.viewportDimensions = exports.Utils.getViewportSize();
+  if (!Driver.INITIAL_Y_OFFSET) {
+    Driver.INITIAL_Y_OFFSET = options.initYOffset || this.OBJ_PADDING;
+  }
+
+  this.viewportDimensions = Utils.getViewportSize();
   this.scrollBlock = new exports.ScrollBlock(document.getElementById('scrollBlock'), {
-    height: options.scrollBlockHeight || 10000
+    height: options.scrollBlockHeight || this.viewportDimensions.height * 2,
+    heightBuffer: options.scrollBlockBuffer || this.viewportDimensions.height * 2
   });
-  this.setTotalColumns();
+  this.totalColumns = this.getTotalColumns();
+  this.palette = options.palette || null;
+  this.system = options.system;
 
+  // remove any existing worlds
+  //
+  worlds = document.querySelectorAll('.world');
+  for (i = 0, max = worlds.length; i < max; i++) {
+    document.body.removeChild(worlds[i]);
+  }
+
+  // create worlds
+  //
+  var xOffset = this.OBJ_MAX_WIDTH / 2 + (this.viewportDimensions.width -
+      (this.totalColumns * (this.OBJ_MAX_WIDTH + this.OBJ_PADDING))) / 2;
+
+  worlds = [];
+  for (i = 0, max = this.totalColumns; i < max; i++) {
+    var worldDiv = document.createElement('div');
+    worldDiv.id = 'world' + i;
+    this.CONTENT_CONTAINER.appendChild(worldDiv);
+    worlds.push(new exports.Lane(document.getElementById('world' + i), {
+      width: this.OBJ_MAX_WIDTH,
+      height: this.viewportDimensions.height,
+      autoHeight: true,
+      location: new Burner.Vector(i * (this.OBJ_MAX_WIDTH + this.OBJ_PADDING) + xOffset,
+          (this.viewportDimensions.height / 2) + this.INITIAL_Y_OFFSET),
+      scrollSpeed: i % 2 === 0 ? this.MIN_SCROLL_SPEED : this.MAX_SCROLL_SPEED,
+      paddingTop: 0,
+      boundToWindow: false,
+      position: 'fixed'
+    }));
+    if (!i) { // assign the resize callback to the first world
+      worlds[worlds.length - 1].afterResize = this.resize;
+    }
+  }
+
+  // initialize the system
+  //
+  this.system.init(null, worlds);
+
+  for (i = 0; i < Ramble.Driver.totalColumns; i++) { // create first row
+    Ramble.Driver.createRider(i);
+  }
+
+  // listen to the scroll event
+  //
   if (document.addEventListener) {
     document.addEventListener('scroll', Driver.onScroll, false);
   } else if (document.attachEvent) {
@@ -88,7 +129,22 @@ Driver.init = function(opt_options) {
   }
 
   window.scrollTo(0, 0);
+
+  this.system.start();
+
+  Driver.onScroll();
 };
+
+/**
+ * Sets the total number of scrollable columns.
+ */
+Driver.getTotalColumns = function() {
+  var totalColumns = Math.floor(this.viewportDimensions.width /
+      (this.OBJ_MAX_WIDTH + this.OBJ_PADDING));
+  return totalColumns;
+};
+
+
 
 /**
  * Adds a new Rider to the system.
@@ -113,103 +169,68 @@ Driver.createRider = function(i, opt_options) {
    * its properties will be passed via the opt_options argument.
    * Set these properties first.
    */
-  props.width = this.OBJ_MAX_WIDTH;
-  props.height = options.height || props.width;
-  props.color = options.color || 'transparent';
-  props.text = options.text || i;
+  //props.width = this.OBJ_MAX_WIDTH;
+  //props.height = options.height || props.width;
 
-  // CONTENT
-  var innerContainer = document.createElement('div');
-  innerContainer.className = 'innerContainer';
-  var color = this.palette !== null ? this.palette.getColor() : [150, 150, 150];
-  innerContainer.style.backgroundColor = 'rgb(' + color[0] + ', ' + color[1] + ', ' + color[2] + ')';
-  innerContainer.style.borderRadius = '10%';
-  innerContainer.style.width = exports.Utils.map(myCol, 0, this.totalColumns - 0, this.OBJ_MAX_WIDTH, this.OBJ_MIN_WIDTH) + 'px';
-  var size = exports.Utils.map(myCol, 0, this.totalColumns - 0, this.OBJ_MAX_WIDTH, this.OBJ_MIN_WIDTH);
-  innerContainer.style.height = size + 'px';
-  innerContainer.style.lineHeight = size + 'px';
-  innerContainer.style.fontSize = exports.Utils.map(size, this.OBJ_MIN_WIDTH, this.OBJ_MAX_WIDTH, 0.5, 1) + 'em';
-  innerContainer.style.marginTop = (this.OBJ_MAX_WIDTH - size) / 2 + 'px';
-  innerContainer.style.borderWidth = '2px';
-  innerContainer.style.borderStyle = 'solid';
-  innerContainer.style.borderColor = 'white';
-  innerContainer.textContent = props.text;
-  innerContainer.addEventListener('mouseup', function(e) {
-    alert(e.target.textContent);
-  }, false);
-  props.contents = options.contents || innerContainer;
+  //props.text = options.text || i;
 
-  /**
-   * Some properties are not optional.
-   */
+  if (!options.contents) { // if this is a new rider
+
+    // CONTENT
+    var innerContainer = document.createElement('div');
+    innerContainer.className = 'innerContainer';
+    var color = this.palette !== null ? this.palette.getColor() : [150, 150, 150];
+    innerContainer.style.backgroundColor = 'rgb(' + color[0] + ', ' + color[1] + ', ' + color[2] + ')';
+    innerContainer.style.borderRadius = '10%';
+    innerContainer.style.width = exports.Utils.map(myCol, 0, this.totalColumns - 0, this.OBJ_MAX_WIDTH, this.OBJ_MIN_WIDTH) + 'px';
+    var size = exports.Utils.map(myCol, 0, this.totalColumns - 0, this.OBJ_MAX_WIDTH, this.OBJ_MIN_WIDTH);
+    innerContainer.style.height = size + 'px';
+    innerContainer.style.lineHeight = size + 'px';
+    innerContainer.style.fontSize = exports.Utils.map(size, this.OBJ_MIN_WIDTH, this.OBJ_MAX_WIDTH, 0.5, 1) + 'em';
+    innerContainer.style.marginTop = (this.OBJ_MAX_WIDTH - size) / 2 + 'px';
+    innerContainer.style.borderWidth = '2px';
+    innerContainer.style.borderStyle = 'solid';
+    innerContainer.style.borderColor = 'white';
+    innerContainer.textContent = i;
+    innerContainer.addEventListener('mouseup', function(e) {
+      alert(e.target.textContent);
+    }, false);
+    options.contents = innerContainer;
+  }
+
+  props.contents = options.contents;
+
   props.index = i;
   props.name = 'Rider';
   props.mass = 10;
-  props.opacity = 1;
-  props.borderRadius = 10;
   props.zIndex = 1;
-  props.lineHeight = props.height - 3;
-  props.borderWidth = 0;
-  props.borderStyle = 'solid';
-  props.borderColor = 'white';
 
-  /**
-   * Calculate the object's position based on its
-   * index and height.
-   */
-  var position = this.positionObj(props.index, props.width, props.height);
-  props.initLocation = new Burner.Vector(position.x, position.y + this.scrollDistance * scrollSpeed);
-  props.location = new Burner.Vector(position.x, position.y);
-  props.scrollSpeed = scrollSpeed;
-  props.myCol = myCol;
+  props.autoWidth = true;
+  props.width = this.OBJ_MAX_WIDTH;
+  props.autoHeight = true;
+  props.height = this.OBJ_MAX_WIDTH;
+  props.color = 'transparent';
+  props.location = 'none';
+  props.position = 'relative';
+  props.opacity = 1;
 
   /**
    * Create the object.
    */
-  var obj = Burner.System.add('Rider', props);
+  var obj = this.system.add('Rider', props, Burner.System._worlds.lookup['world' + myCol]);
 
   // add html to container
-  //obj.el.textContent = props.text;
   obj.el.innerHTML = '';
   obj.el.appendChild(props.contents);
 
-  return obj;
-};
-
-/**
- * Positions a rider based on an index and height.
- * @param {number} i An index.
- * @param {number} height The rider's height.
- * @return {Object} A map of x and y coordinates.
- */
-Driver.positionObj = function(i, width, height) {
-
-  var totalColumns = this.totalColumns,
-      myCol = i % this.totalColumns,
-      objWidth = width,
-      objPadding = this.OBJ_PADDING,
-      scrollDirection = this.scrollDirection,
-      position = {}, neighbor, neighborOffset, myOffset, paddingOffset;
-
-  // determines offset needed to center group of stories
-  var xOffset = (this.viewportDimensions.width - ((totalColumns * objWidth) + (totalColumns + 1) * objPadding)) / 2;
-
-  position.x = objWidth * myCol + // centers story at location
-      objWidth / 2 + // moves story origin to its left edge
-      objPadding * (myCol + 1) + // adds padding
-      xOffset; // add centering offset
-
-  neighbor = Burner.System.getAllItemsByAttribute('index', i + totalColumns * scrollDirection)[0];
-  if (neighbor) { // position obj relative to its neighbor
-    neighborOffset = neighbor.height / 2 * -scrollDirection; // the neighbor's position
-    myOffset = height / 2 * -scrollDirection; // add this object's height
-    paddingOffset = objPadding * -scrollDirection; // add padding
-    position.y = neighbor.location.y + neighborOffset + myOffset + paddingOffset;
-  } else {
-    position.y = height / 2 + objPadding + this.INITIAL_Y_OFFSET; // the first row
+  // shuffle frogs based on scroll direction
+  if (Driver.scrollDirection === -1 && obj.world.el.firstChild) {
+    obj.world.el.insertBefore(obj.el, null); // appends to end of node list
+  } else if (Driver.scrollDirection === 1 && obj.world.el.firstChild) {
+    obj.world.el.insertBefore(obj.el, obj.world.el.firstChild); // appends to beginning of node list
   }
 
-  return position;
+  return obj;
 };
 
 /**
@@ -217,29 +238,12 @@ Driver.positionObj = function(i, width, height) {
  */
 Driver.onScroll = function() {
 
-//console.log(document.getElementById('scrollBlock').getBoundingClientRect());
-  var scrollOffset;
-
   Driver.scrollDirection = Driver.lastPageYOffset > window.pageYOffset ? 1 : -1;
-  //Driver.scrollSpeed = Driver.lastPageYOffset - window.pageYOffset;
   Driver.lastPageYOffset = window.pageYOffset;
   Driver.scrollDistance = window.pageYOffset;
 
-
-
-  if (Driver.scrollBlock.el.getBoundingClientRect().bottom < Driver.viewportDimensions.height) {
+  if (Driver.scrollBlock.el.getBoundingClientRect().bottom <= Driver.viewportDimensions.height) {
     Driver.scrollBlock.addHeight();
-  }
-
-  //scrollOffset = Driver.viewportDimensions.height + window.pageYOffset + Driver.scrollThrottle;
-
-  /*if (Driver.scrollBlock.height < scrollOffset && !Driver.fetching) {
-    Driver.scrollBlock.height = scrollOffset;
-    Driver.scrollBlock.el.style.height = Driver.scrollBlock.height + 'px';
-  }*/
-
-  if (!Burner.System._updating) {
-    //Burner.System._update();
   }
 };
 
@@ -247,29 +251,8 @@ Driver.onScroll = function() {
  * Sets the total number of scrollable columns.
  */
 Driver.setTotalColumns = function() {
-
   this.totalColumns = Math.floor(this.viewportDimensions.width /
       (this.OBJ_MAX_WIDTH + this.OBJ_PADDING));
-
-  var factor = this.OBJ_MIN_WIDTH/this.OBJ_MAX_WIDTH;
-
-
-
-  //this.OBJ_MIN_WIDTH = options.objMinWidth || 60;
-  //this.OBJ_MAX_WIDTH = options.objMaxWidth || 120;
-  //exports.Utils.map(myCol, 0, this.totalColumns - 1, this.OBJ_MAX_WIDTH, this.OBJ_MIN_WIDTH);
-
-  /*var i = 0, currentWidth = 0, varWidth = this.OBJ_MAX_WIDTH,
-      viewportWidth = Driver.viewportDimensions.width;
-
-  while(currentWidth < viewportWidth) {
-    varWidth *= factor;
-    currentWidth += varWidth;
-    i++;
-  }
-  this.totalColumns = i;
-  console.log(currentWidth, viewportWidth);*/
-
 };
 
 /**
@@ -281,7 +264,8 @@ Driver.setTotalColumns = function() {
 Driver.updateCache = function(obj) {
   this.cache[obj.index] = {
     height: obj.height,
-    html: obj.html
+    firstChildHeight: obj.firstChildHeight,
+    contents: obj.contents
   };
 };
 

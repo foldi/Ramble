@@ -22,8 +22,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-/* Version: 2.0.4 */
-/* Build time: August 24, 2013 12:38:14 *//** @namespace */
+/* Version: 2.0.5 */
+/* Build time: August 24, 2013 04:21:57 *//** @namespace */
 var Burner = {}, exports = Burner;
 
 (function(exports) {
@@ -704,10 +704,17 @@ Item.prototype.reset = function(opt_options) {
       options.velocity || new exports.Vector();
   this.location = typeof options.location === 'function' ? options.location.call(this) :
       options.location || new exports.Vector(this.world.width / 2, this.world.height / 2);
+  this.initLocation = new exports.Vector();
+  this.initLocation.x = this.location.x;
+  this.initLocation.y = this.location.y;
 
   this.maxSpeed = options.maxSpeed === undefined ? 10 : options.maxSpeed;
   this.minSpeed = options.minSpeed || 0;
   this.angle = options.angle || 0;
+
+  this.position = options.position || 'absolute';
+  this.paddingTop = options.paddingTop || 0;
+  this.marginTop = options.marginTop || 0;
 
   this.lifespan = options.lifespan === undefined ? -1 : options.lifespan;
   this.life = options.life || 0;
@@ -1343,8 +1350,8 @@ System.destroyItem = function (obj) {
   for (i = 0, max = records.length; i < max; i++) {
     if (records[i].id === obj.id) {
       records[i].el.style.visibility = 'hidden'; // hide item
-      records[i].el.style.top = '-5000px';
-      records[i].el.style.left = '-5000px';
+      records[i].el.style.display = 'none';
+      records[i].el.style.opacity = 0;
       records[i].world._pool[records[i].world._pool.length] = records.splice(i, 1)[0]; // move record to pool array
       System._updateCacheLookup(obj, false);
       break;
@@ -1709,8 +1716,8 @@ System._draw = function(obj) {
     y: obj.location.y - (obj.height / 2),
     angle: obj.angle,
     scale: obj.scale || 1,
-    width: obj.width,
-    height: obj.height,
+    width: obj.autoWidth ? null : obj.width,
+    height: obj.autoHeight ? null : obj.height,
     color0: obj.color[0],
     color1: obj.color[1],
     color2: obj.color[2],
@@ -1730,7 +1737,10 @@ System._draw = function(obj) {
     boxShadowSpread: obj.boxShadowSpread,
     boxShadowColor0: obj.boxShadowColor[0],
     boxShadowColor1: obj.boxShadowColor[1],
-    boxShadowColor2: obj.boxShadowColor[2]
+    boxShadowColor2: obj.boxShadowColor[2],
+    position: obj.position,
+    paddingTop: obj.paddingTop,
+    marginTop: obj.marginTop
   });
   obj.el.style.cssText = cssText;
 };
@@ -1746,7 +1756,8 @@ System.getCSSText = function(props) {
       props.colorMode + '(' + props.color0 + ', ' + props.color1 + (props.colorMode === 'hsl' ? '%' : '') + ', ' + props.color2 + (props.colorMode === 'hsl' ? '%' : '') +'); border: ' +
       props.borderWidth + 'px ' + props.borderStyle + ' ' + props.colorMode + '(' + props.borderColor0 + ', ' + props.borderColor1 + (props.colorMode === 'hsl' ? '%' : '') + ', ' + props.borderColor2 + (props.colorMode === 'hsl' ? '%' : '') + '); border-radius: ' +
       props.borderRadius + '%; box-shadow: ' + props.boxShadowOffsetX + 'px ' + props.boxShadowOffsetY + 'px ' + props.boxShadowBlur + 'px ' + props.boxShadowSpread + 'px ' + props.colorMode + '(' + props.boxShadowColor0 + ', ' + props.boxShadowColor1 + (props.colorMode === 'hsl' ? '%' : '') + ', ' + props.boxShadowColor2 + (props.colorMode === 'hsl' ? '%' : '') + '); visibility: ' +
-      props.visibility + '; opacity: ' + props.opacity + '; z-index: ' + props.zIndex + ';';
+      props.visibility + '; opacity: ' + props.opacity + '; z-index: ' + props.zIndex + '; position: ' +
+      props.position + '; padding-top: ' + props.paddingTop + 'px; margin-top: ' + props.marginTop + 'px;';
 };
 exports.System = System;
 /*global exports */
@@ -1772,6 +1783,8 @@ function World(el, opt_options) {
   this.id = this.name + exports.System.getNewId();
   this.width = options.width || 0;
   this.height = options.height || 0;
+  this.autoWidth = !!options.autoWidth;
+  this.autoHeight = !!options.autoHeight;
   this.angle = 0;
   this.color = options.color || 'transparent';
   this.colorMode = options.colorMode || 'rgb';
@@ -1788,6 +1801,10 @@ function World(el, opt_options) {
   this.c = options.c || 0.1;
   this.boundToWindow = options.boundToWindow === false ? false : true;
   this.location = options.location;
+  this.initLocation = new exports.Vector(this.location.x, this.location.y);
+  this.position = options.position || 'absolute';
+  this.paddingTop = options.paddingTop || 0;
+  this.marginTop = options.marginTop || 0;
 
   this.pauseStep = false;
   this.pauseDraw = false;
