@@ -1,4 +1,4 @@
-/*! Ramble v1.0.0 - 2013-08-24 04:08:10 
+/*! Ramble v1.0.0 - 2013-08-25 05:08:13 
  *  Vince Allen 
  *  Brooklyn, NY 
  *  vince@vinceallen.com 
@@ -229,6 +229,8 @@ Driver.MAX_LANES = 1;
 
 Driver.INITIAL_Y_OFFSET = 0;
 
+Driver.force = new Burner.Vector();
+
 Driver.init = function(opt_options) {
 
   var i, max, options = opt_options || {},
@@ -246,25 +248,19 @@ Driver.init = function(opt_options) {
   }
 
   this.viewportDimensions = Utils.getViewportSize();
-  this.scrollBlock = new exports.ScrollBlock(document.getElementById('scrollBlock'), {
+  /*this.scrollBlock = new exports.ScrollBlock(document.getElementById('scrollBlock'), {
     height: options.scrollBlockHeight || this.viewportDimensions.height * 2,
     heightBuffer: options.scrollBlockBuffer || this.viewportDimensions.height * 2
-  });
+  });*/
   this.totalColumns = this.getTotalColumns();
   this.palette = options.palette || null;
   this.system = options.system;
 
-  // remove any existing worlds
-  //
-  worlds = document.querySelectorAll('.world');
-  for (i = 0, max = worlds.length; i < max; i++) {
-    document.body.removeChild(worlds[i]);
-  }
-
   // create worlds
   //
-  var xOffset = this.OBJ_MAX_WIDTH / 2 + (this.viewportDimensions.width -
-      (this.totalColumns * (this.OBJ_MAX_WIDTH + this.OBJ_PADDING))) / 2;
+  //this.totalColumns = 1;
+  var totalWidth = ((this.totalColumns - 1) * this.OBJ_MAX_WIDTH) + ((this.totalColumns - 1) * this.OBJ_PADDING);
+  var xOffset = this.viewportDimensions.width / 2 - totalWidth / 2;
 
   worlds = [];
   for (i = 0, max = this.totalColumns; i < max; i++) {
@@ -275,12 +271,15 @@ Driver.init = function(opt_options) {
       width: this.OBJ_MAX_WIDTH,
       height: this.viewportDimensions.height,
       autoHeight: true,
-      location: new Burner.Vector(i * (this.OBJ_MAX_WIDTH + this.OBJ_PADDING) + xOffset,
+      location: new Burner.Vector((i + 0) * (this.OBJ_MAX_WIDTH + this.OBJ_PADDING) + xOffset,
           (this.viewportDimensions.height / 2) + this.INITIAL_Y_OFFSET),
       scrollSpeed: i % 2 === 0 ? this.MIN_SCROLL_SPEED : this.MAX_SCROLL_SPEED,
       paddingTop: 0,
       boundToWindow: false,
-      position: 'fixed'
+      position: 'fixed',
+      c: 0.1,
+      index: i,
+      totalColumns: this.totalColumns
     }));
     if (!i) { // assign the resize callback to the first world
       worlds[worlds.length - 1].afterResize = this.resize;
@@ -291,23 +290,79 @@ Driver.init = function(opt_options) {
   //
   this.system.init(null, worlds);
 
-  for (var i = 0; i < Ramble.Driver.totalColumns; i++) { // create first row
+  for (i = 0; i < Ramble.Driver.totalColumns; i++) { // create first row
     Ramble.Driver.createRider(i);
   }
 
-  // listen to the scroll event
-  //
-  if (document.addEventListener) {
-    document.addEventListener('scroll', Driver.onScroll, false);
-  } else if (document.attachEvent) {
-    document.attachEvent('onScroll', Driver.onScroll);
-  }
-
-  window.scrollTo(0, 0);
-
   this.system.start();
 
-  Driver.onScroll();
+  //
+
+  this.defaultPosition = this.viewportDimensions.height * 0.5;
+  this.scrollBlockHeight = this.viewportDimensions.height * 3;
+  this.lastScrollY = 0;
+  document.getElementById('scrollBlock').style.height = this.scrollBlockHeight + 'px';
+  window.scrollTo(0, this.defaultPosition);
+
+  exports.Utils._addEvent(document, 'mousedown', this.onMouseDown);
+
+  exports.Utils._addEvent(document, 'mouseup', this.onMouseUp);
+
+  exports.Utils._addEvent(window, 'mouseout', this.resetScrollBar);
+
+  exports.Utils._addEvent(document, 'scroll', this.onScroll);
+
+};
+
+
+Driver.resetScrollBar = function(e) {
+  Driver.isMouseDown = false;
+  window.scrollTo(0, Driver.defaultPosition);
+  Driver.lastPageYOffset = null;
+};
+
+Driver.onMouseDown = function() {
+  Driver.isMouseDown = true;
+  exports.Utils._addEvent(window, 'mousemove', Driver.onMouseMove);
+}
+
+Driver.onMouseMove = function(e) {
+  exports.Utils._removeEvent(window, 'mousemove', Driver.onMouseMove);
+  window.scrollTo(0, Driver.defaultPosition); // IE fires a onmousemove event on scroll bar mouseup
+  Driver.lastPageYOffset = null;
+};
+
+Driver.onMouseUp = function() {
+  Driver.isMouseDown = false;
+  Driver.resetScrollBar();
+}
+
+Driver.onScroll = function(e) {
+
+  var scrollBlock = document.getElementById('scrollBlock'),
+      rect = scrollBlock.getBoundingClientRect();
+
+  if (Driver.lastPageYOffset) {
+    Driver.scrollDirection = Driver.lastPageYOffset > window.pageYOffset ? 1 : -1;
+  }
+
+  if (Driver.scrollDirection === -1) {
+    Driver.force.y = exports.Utils.map(-rect.top, Driver.defaultPosition,
+        Driver.scrollBlockHeight - Driver.viewportDimensions.height, 0, -1);
+  } else {
+    Driver.force.y = exports.Utils.map(-rect.top, 0, Driver.defaultPosition, 2, 0);
+  }
+
+  clearTimeout(Driver.scrollTimeout);
+
+  Driver.scrollTimeout = setTimeout(function() {
+    if (!Driver.isMouseDown) { // if user is not holding the scrollbar
+      window.scrollTo(0, Driver.defaultPosition);
+      Driver.lastPageYOffset = null;
+    }
+  }, 100);
+
+  Driver.lastPageYOffset = window.pageYOffset;
 };
 
 /**
@@ -333,21 +388,17 @@ Driver.createRider = function(i, opt_options) {
       myCol = i % this.totalColumns,
       scrollSpeed;
 
-  if (!this.speedPropToMass) {
+  /*if (!this.speedPropToMass) {
     scrollSpeed = myCol % 2 ?  this.MAX_SCROLL_SPEED :  this.MIN_SCROLL_SPEED;
   } else {
     scrollSpeed = exports.Utils.map(myCol, 0, this.totalColumns - 1, this.MIN_SCROLL_SPEED, this.MAX_SCROLL_SPEED);
-  }
+  }*/
 
   /**
    * If a story has been cached (ie. in the object pool),
    * its properties will be passed via the opt_options argument.
    * Set these properties first.
    */
-  //props.width = this.OBJ_MAX_WIDTH;
-  //props.height = options.height || props.width;
-
-  //props.text = options.text || i;
 
   if (!options.contents) { // if this is a new rider
 
@@ -362,7 +413,7 @@ Driver.createRider = function(i, opt_options) {
     innerContainer.style.height = size + 'px';
     innerContainer.style.lineHeight = size + 'px';
     innerContainer.style.fontSize = exports.Utils.map(size, this.OBJ_MIN_WIDTH, this.OBJ_MAX_WIDTH, 0.5, 1) + 'em';
-    innerContainer.style.marginTop = (this.OBJ_MAX_WIDTH - size) / 2 + 'px';
+    innerContainer.style.marginTop = '0px';
     innerContainer.style.borderWidth = '2px';
     innerContainer.style.borderStyle = 'solid';
     innerContainer.style.borderColor = 'white';
@@ -377,7 +428,6 @@ Driver.createRider = function(i, opt_options) {
 
   props.index = i;
   props.name = 'Rider';
-  props.mass = 10;
   props.zIndex = 1;
 
   props.autoWidth = true;
@@ -388,6 +438,9 @@ Driver.createRider = function(i, opt_options) {
   props.location = 'none';
   props.position = 'relative';
   props.opacity = 1;
+  props.borderWidth = 1;
+    props.borderStyle = 'none';
+    props.borderColor = [255, 255, 0];
 
   /**
    * Create the object.
@@ -411,7 +464,7 @@ Driver.createRider = function(i, opt_options) {
 /**
  * Handles the scroll event.
  */
-Driver.onScroll = function() {
+Driver.onScroll_ = function() {
 
   Driver.scrollDirection = Driver.lastPageYOffset > window.pageYOffset ? 1 : -1;
   Driver.lastPageYOffset = window.pageYOffset;
@@ -434,7 +487,7 @@ Driver.setTotalColumns = function() {
  * Stores display properties from instances before they
  * were destroyed.
  *
- * @param  {Object} obj A map of properties.
+ * @param {Object} obj A map of properties.
  */
 Driver.updateCache = function(obj) {
   this.cache[obj.index] = {
@@ -516,27 +569,83 @@ function Lane(el, opt_options) {
 	var options = opt_options || {};
 
 	if (!el || typeof el !== 'object') {
-	  throw new Error('World: A valid DOM object is required for a new FroggerLane.');
+    throw new Error('World: A valid DOM object is required for a new FroggerLane.');
 	}
 
 	this.scrollSpeed = options.scrollSpeed || 0.5;
 	this.position = 'fixed';
 	this.adjusted = false;
+	this.acceleration = new Burner.Vector();
+	this.velocity = new Burner.Vector();
+	this._force = new Burner.Vector();
+	this.friction = new Burner.Vector();
+	this.mass = exports.Utils.map(options.index, 0, options.totalColumns, 3, 1);
+	this.maxSpeed = 15;
+	this.minSpeed = 0;
 	Burner.World.call(this, el, options);
 }
 Burner.System.extend(Lane, Burner.World);
 
 /**
+ * Updates properties.
+ */
+Lane.prototype.step = function() {
+
+		// friction
+  this.friction.x = this.velocity.x;
+  this.friction.y = this.velocity.y;
+  this.friction.mult(-1);
+  this.friction.normalize();
+  this.friction.mult(this.c);
+  this.applyForce(this.friction);
+
+  //
+  this.applyForce(exports.Driver.force);
+  this.velocity.add(this.acceleration);
+  this.velocity.limit(this.maxSpeed);
+  //this.location.add(this.velocity);
+  if (Math.abs(this.velocity.y) > 0.1) {
+    this.marginTop += this.velocity.y;
+  }
+  if (this.marginTop > 0) {
+    this.marginTop = 0;
+    this.velocity.mult(0);
+  }
+  this.acceleration.mult(0);
+
+  this.adjusted = false;
+};
+
+/**
+ * Adds a force to this object's acceleration.
+ *
+ * @param {Object} force A Vector representing a force to apply.
+ * @returns {Object} A Vector representing a new acceleration.
+ */
+Lane.prototype.applyForce = function(force) {
+  // calculated via F = m * a
+  if (force) {
+    this._force.x = force.x;
+    this._force.y = force.y;
+    this._force.div(this.mass);
+    this.acceleration.add(this._force);
+    return this.acceleration;
+  }
+};
+
+/**
 * Updates properties.
 */
-Lane.prototype.step = function() {
+Lane.prototype.step_ = function() {
 	this.adjusted = false;
-	this.marginTop = window.pageYOffset * -this.scrollSpeed;
+	//this.marginTop = window.pageYOffset * -this.scrollSpeed;
 	// could update this.location.y here using:
 	// this.location.y = this.initLocation.y + (window.pageYOffset * -this.scrollSpeed);
 	// but updating top margin is less math.
-};
 
+
+	this.marginTop -= exports.Driver.force.y;
+};
 
 exports.Lane = Lane;
 
@@ -563,6 +672,25 @@ Rider.prototype.step = function() {
       rect = this.el.getBoundingClientRect(),
       top = rect.top,
       height = rect.height;
+
+  // don't check for Driver.scrollDirection; use this obj's
+  /*if (this.lastLocY >= top || !this.lastLocY) {
+    scrollDirection = -1;
+  } else {
+    scrollDirection = 1;
+  }
+
+  if (top - this.lastLocY > Driver.viewportDimensions.height) {
+    scrollDirection = -1;
+  } else if (this.lastLocY - top > Driver.viewportDimensions.height) {
+    //scrollDirection = 1;
+  }
+
+  if (scrollDirection === 1) {
+    console.log(scrollDirection);
+  }*/
+
+  // use this.world.velocity.y?
 
   if (!world.adjusted && scrollDirection === -1 &&
       top + height < Driver.viewportDimensions.height) { // scrolling up && obj appears just above bottom border
@@ -613,61 +741,10 @@ Rider.prototype.step = function() {
       return;
     }
   }
+
+  this.lastLocY = top;
 };
 
-/**
- * Updates instance properties.
- */
-Rider.prototype.step_ = function() {
-return;
-  var props, before, after,
-      scrollDirection =  exports.Driver.scrollDirection,
-      totalColumns =  exports.Driver.totalColumns,
-      cache = exports.Driver.cache,
-      rect = this.el.getBoundingClientRect(),
-      top = rect.top,
-      height = rect.height;
-
-  if (!this.forceDirected) {
-
-    this.location.y = this.initLocation.y + (window.pageYOffset * -this.scrollSpeed);
-
-  } else {
-    this.scrollVector.y = 0.1 * exports.Driver.scrollDirection;
-    this.applyForce(this.scrollVector);
-    //this.acceleration.add(this.scrollVector);
-    this.velocity.add(this.acceleration);
-    this.location.add(this.velocity);
-    this.acceleration.mult(0);
-  }
-
-  if (scrollDirection === -1 && // if initial load or scrolling up
-      top + height < Driver.viewportDimensions.height) { // obj appears above bottom border
-    after = Burner.System.getAllItemsByAttribute('index', this.index + totalColumns)[0];
-    if (!after) { // if an obj does NOT exist under me
-      props = cache[this.index + totalColumns];
-      exports.Driver.createRider(this.index + totalColumns, props);
-    }
-  }
-
-  if (scrollDirection === 1 && top > 0) { // if scrolling down; obj appears just below top border
-    before = Burner.System.getAllItemsByAttribute('index', this.index - totalColumns)[0];
-    if (!before && this.index >= totalColumns) {
-      props = cache[this.index - totalColumns]; // recycling objects; use cache
-      exports.Driver.createRider(this.index - totalColumns, props);
-    }
-  }
-
-  if (scrollDirection === -1 && top + height < 0) { // if scrolling up; obj appears just above top border
-    exports.Driver.updateCache(this);
-    Burner.System.destroyItem(this); // destory this obj
-  }
-
-  if (scrollDirection === 1 && top > Driver.viewportDimensions.height) { // if scrolling down; obj appears below bottom border
-    exports.Driver.updateCache(this);
-    Burner.System.destroyItem(this); // destory this obj
-  }
-};
 exports.Rider = Rider;
 
 function ScrollBlock(el, opt_options) {
@@ -917,6 +994,22 @@ Utils._addEvent = function(target, eventType, handler) {
     target.addEventListener(eventType, handler, false);
   } else if (target.attachEvent) { // IE
     target.attachEvent("on" + eventType, handler);
+  }
+};
+
+/**
+ * Removes an event listener.
+ *
+ * @param {Object} target The element to receive the event listener.
+ * @param {string} eventType The event type.
+ * @param {function} The function to run when the event is triggered.
+ * @private
+ */
+Utils._removeEvent = function(target, eventType, handler) {
+  if (target.removeEventListener) { // W3C
+    target.removeEventListener(eventType, handler, false);
+  } else if (target.detachEvent) { // IE
+    target.detachEvent('on' + eventType, handler);
   }
 };
 

@@ -7,7 +7,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  overflow: scroll;
+  overflow-x: hidden;
 }
 
 .hide {
@@ -32,7 +32,7 @@ body {
   font-size: 24px;
   font-family: "Helvetica Neue";
 
-  margin-bottom: 100px;
+  margin-bottom: 120px;
 }
 
 .innerContainer {

@@ -44,6 +44,22 @@ Utils._addEvent = function(target, eventType, handler) {
 };
 
 /**
+ * Removes an event listener.
+ *
+ * @param {Object} target The element to receive the event listener.
+ * @param {string} eventType The event type.
+ * @param {function} The function to run when the event is triggered.
+ * @private
+ */
+Utils._removeEvent = function(target, eventType, handler) {
+  if (target.removeEventListener) { // W3C
+    target.removeEventListener(eventType, handler, false);
+  } else if (target.detachEvent) { // IE
+    target.detachEvent('on' + eventType, handler);
+  }
+};
+
+/**
  * Extends the properties and methods of a superClass onto a subClass.
  *
  * @param {Object} subClass The subClass.

@@ -54,6 +54,8 @@ Driver.MAX_LANES = 1;
 
 Driver.INITIAL_Y_OFFSET = 0;
 
+Driver.force = new Burner.Vector();
+
 Driver.init = function(opt_options) {
 
   var i, max, options = opt_options || {},
@@ -71,25 +73,19 @@ Driver.init = function(opt_options) {
   }
 
   this.viewportDimensions = Utils.getViewportSize();
-  this.scrollBlock = new exports.ScrollBlock(document.getElementById('scrollBlock'), {
+  /*this.scrollBlock = new exports.ScrollBlock(document.getElementById('scrollBlock'), {
     height: options.scrollBlockHeight || this.viewportDimensions.height * 2,
     heightBuffer: options.scrollBlockBuffer || this.viewportDimensions.height * 2
-  });
+  });*/
   this.totalColumns = this.getTotalColumns();
   this.palette = options.palette || null;
   this.system = options.system;
 
-  // remove any existing worlds
-  //
-  worlds = document.querySelectorAll('.world');
-  for (i = 0, max = worlds.length; i < max; i++) {
-    document.body.removeChild(worlds[i]);
-  }
-
   // create worlds
   //
-  var xOffset = this.OBJ_MAX_WIDTH / 2 + (this.viewportDimensions.width -
-      (this.totalColumns * (this.OBJ_MAX_WIDTH + this.OBJ_PADDING))) / 2;
+  //this.totalColumns = 1;
+  var totalWidth = ((this.totalColumns - 1) * this.OBJ_MAX_WIDTH) + ((this.totalColumns - 1) * this.OBJ_PADDING);
+  var xOffset = this.viewportDimensions.width / 2 - totalWidth / 2;
 
   worlds = [];
   for (i = 0, max = this.totalColumns; i < max; i++) {
@@ -100,12 +96,15 @@ Driver.init = function(opt_options) {
       width: this.OBJ_MAX_WIDTH,
       height: this.viewportDimensions.height,
       autoHeight: true,
-      location: new Burner.Vector(i * (this.OBJ_MAX_WIDTH + this.OBJ_PADDING) + xOffset,
+      location: new Burner.Vector((i + 0) * (this.OBJ_MAX_WIDTH + this.OBJ_PADDING) + xOffset,
           (this.viewportDimensions.height / 2) + this.INITIAL_Y_OFFSET),
       scrollSpeed: i % 2 === 0 ? this.MIN_SCROLL_SPEED : this.MAX_SCROLL_SPEED,
       paddingTop: 0,
       boundToWindow: false,
-      position: 'fixed'
+      position: 'fixed',
+      c: 0.1,
+      index: i,
+      totalColumns: this.totalColumns
     }));
     if (!i) { // assign the resize callback to the first world
       worlds[worlds.length - 1].afterResize = this.resize;
@@ -120,19 +119,74 @@ Driver.init = function(opt_options) {
     Ramble.Driver.createRider(i);
   }
 
-  // listen to the scroll event
-  //
-  if (document.addEventListener) {
-    document.addEventListener('scroll', Driver.onScroll, false);
-  } else if (document.attachEvent) {
-    document.attachEvent('onScroll', Driver.onScroll);
-  }
-
-  window.scrollTo(0, 0);
-
   this.system.start();
 
-  Driver.onScroll();
+  //
+
+  this.defaultPosition = this.viewportDimensions.height * 0.5;
+  this.scrollBlockHeight = this.viewportDimensions.height * 3;
+  this.lastScrollY = 0;
+  document.getElementById('scrollBlock').style.height = this.scrollBlockHeight + 'px';
+  window.scrollTo(0, this.defaultPosition);
+
+  exports.Utils._addEvent(document, 'mousedown', this.onMouseDown);
+
+  exports.Utils._addEvent(document, 'mouseup', this.onMouseUp);
+
+  exports.Utils._addEvent(window, 'mouseout', this.resetScrollBar);
+
+  exports.Utils._addEvent(document, 'scroll', this.onScroll);
+
+};
+
+Driver.resetScrollBar = function(e) {
+  Driver.isMouseDown = false;
+  window.scrollTo(0, Driver.defaultPosition);
+  Driver.lastPageYOffset = null;
+};
+
+Driver.onMouseDown = function() {
+  Driver.isMouseDown = true;
+  exports.Utils._addEvent(window, 'mousemove', Driver.onMouseMove);
+};
+
+Driver.onMouseMove = function(e) {
+  exports.Utils._removeEvent(window, 'mousemove', Driver.onMouseMove);
+  window.scrollTo(0, Driver.defaultPosition); // IE fires a onmousemove event on scroll bar mouseup
+  Driver.lastPageYOffset = null;
+};
+
+Driver.onMouseUp = function() {
+  Driver.isMouseDown = false;
+  Driver.resetScrollBar();
+};
+
+Driver.onScroll = function(e) {
+
+  var scrollBlock = document.getElementById('scrollBlock'),
+      rect = scrollBlock.getBoundingClientRect();
+
+  if (Driver.lastPageYOffset) {
+    Driver.scrollDirection = Driver.lastPageYOffset > window.pageYOffset ? 1 : -1;
+  }
+
+  if (Driver.scrollDirection === -1) {
+    Driver.force.y = exports.Utils.map(-rect.top, Driver.defaultPosition,
+        Driver.scrollBlockHeight - Driver.viewportDimensions.height, 0, -1);
+  } else {
+    Driver.force.y = exports.Utils.map(-rect.top, 0, Driver.defaultPosition, 2, 0);
+  }
+
+  clearTimeout(Driver.scrollTimeout);
+
+  Driver.scrollTimeout = setTimeout(function() {
+    if (!Driver.isMouseDown) { // if user is not holding the scrollbar
+      window.scrollTo(0, Driver.defaultPosition);
+      Driver.lastPageYOffset = null;
+    }
+  }, 100);
+
+  Driver.lastPageYOffset = window.pageYOffset;
 };
 
 /**
@@ -158,21 +212,17 @@ Driver.createRider = function(i, opt_options) {
       myCol = i % this.totalColumns,
       scrollSpeed;
 
-  if (!this.speedPropToMass) {
+  /*if (!this.speedPropToMass) {
     scrollSpeed = myCol % 2 ?  this.MAX_SCROLL_SPEED :  this.MIN_SCROLL_SPEED;
   } else {
     scrollSpeed = exports.Utils.map(myCol, 0, this.totalColumns - 1, this.MIN_SCROLL_SPEED, this.MAX_SCROLL_SPEED);
-  }
+  }*/
 
   /**
    * If a story has been cached (ie. in the object pool),
    * its properties will be passed via the opt_options argument.
    * Set these properties first.
    */
-  //props.width = this.OBJ_MAX_WIDTH;
-  //props.height = options.height || props.width;
-
-  //props.text = options.text || i;
 
   if (!options.contents) { // if this is a new rider
 
@@ -187,7 +237,7 @@ Driver.createRider = function(i, opt_options) {
     innerContainer.style.height = size + 'px';
     innerContainer.style.lineHeight = size + 'px';
     innerContainer.style.fontSize = exports.Utils.map(size, this.OBJ_MIN_WIDTH, this.OBJ_MAX_WIDTH, 0.5, 1) + 'em';
-    innerContainer.style.marginTop = (this.OBJ_MAX_WIDTH - size) / 2 + 'px';
+    innerContainer.style.marginTop = '0px';
     innerContainer.style.borderWidth = '2px';
     innerContainer.style.borderStyle = 'solid';
     innerContainer.style.borderColor = 'white';
@@ -202,7 +252,6 @@ Driver.createRider = function(i, opt_options) {
 
   props.index = i;
   props.name = 'Rider';
-  props.mass = 10;
   props.zIndex = 1;
 
   props.autoWidth = true;
@@ -213,6 +262,9 @@ Driver.createRider = function(i, opt_options) {
   props.location = 'none';
   props.position = 'relative';
   props.opacity = 1;
+  props.borderWidth = 1;
+    props.borderStyle = 'none';
+    props.borderColor = [255, 255, 0];
 
   /**
    * Create the object.
@@ -234,20 +286,6 @@ Driver.createRider = function(i, opt_options) {
 };
 
 /**
- * Handles the scroll event.
- */
-Driver.onScroll = function() {
-
-  Driver.scrollDirection = Driver.lastPageYOffset > window.pageYOffset ? 1 : -1;
-  Driver.lastPageYOffset = window.pageYOffset;
-  Driver.scrollDistance = window.pageYOffset;
-
-  if (Driver.scrollBlock.el.getBoundingClientRect().bottom <= Driver.viewportDimensions.height) {
-    Driver.scrollBlock.addHeight();
-  }
-};
-
-/**
  * Sets the total number of scrollable columns.
  */
 Driver.setTotalColumns = function() {
@@ -259,7 +297,7 @@ Driver.setTotalColumns = function() {
  * Stores display properties from instances before they
  * were destroyed.
  *
- * @param  {Object} obj A map of properties.
+ * @param {Object} obj A map of properties.
  */
 Driver.updateCache = function(obj) {
   this.cache[obj.index] = {

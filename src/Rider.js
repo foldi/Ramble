@@ -28,6 +28,25 @@ Rider.prototype.step = function() {
       top = rect.top,
       height = rect.height;
 
+  // don't check for Driver.scrollDirection; use this obj's
+  /*if (this.lastLocY >= top || !this.lastLocY) {
+    scrollDirection = -1;
+  } else {
+    scrollDirection = 1;
+  }
+
+  if (top - this.lastLocY > Driver.viewportDimensions.height) {
+    scrollDirection = -1;
+  } else if (this.lastLocY - top > Driver.viewportDimensions.height) {
+    //scrollDirection = 1;
+  }
+
+  if (scrollDirection === 1) {
+    console.log(scrollDirection);
+  }*/
+
+  // use this.world.velocity.y?
+
   if (!world.adjusted && scrollDirection === -1 &&
       top + height < Driver.viewportDimensions.height) { // scrolling up && obj appears just above bottom border
     after = Burner.System.getAllItemsByAttribute('index', this.index + totalColumns)[0];
@@ -77,4 +96,6 @@ Rider.prototype.step = function() {
       return;
     }
   }
+
+  this.lastLocY = top;
 };
