@@ -46,8 +46,21 @@ Rider.prototype.step = function() {
   }*/
 
   // use this.world.velocity.y?
+ 
 
-  if (!world.adjusted && scrollDirection === -1 &&
+
+  if (Math.abs(this.world.velocity.y) < 0.1) {
+    this.scrollDirection = -1;
+  } else if (this.world.velocity.y <= 0) {
+    this.scrollDirection = -1;
+  } else {
+    this.scrollDirection = 1;
+  }
+
+
+  // destroyed rider should save its scrollDirection
+
+  if (!world.adjusted && this.scrollDirection === -1 &&
       top + height < Driver.viewportDimensions.height) { // scrolling up && obj appears just above bottom border
     after = Burner.System.getAllItemsByAttribute('index', this.index + totalColumns)[0];
     if (!after) { // if an obj does NOT exist under me
@@ -60,7 +73,7 @@ Rider.prototype.step = function() {
     }
   }
 
-  if (!world.adjusted && scrollDirection === 1 && top > 0) { // scrolling down && obj appears just below top border
+  if (!world.adjusted && this.scrollDirection === 1 && top > 0) { // scrolling down && obj appears just below top border
     before = Burner.System.getAllItemsByAttribute('index', this.index - totalColumns)[0];
     if (!before && this.index >= totalColumns) {
       if (top > Driver.viewportDimensions.height) { // if obj also appears below bottom border
@@ -76,10 +89,11 @@ Rider.prototype.step = function() {
     }
   }
 
-  if (!world.adjusted && scrollDirection === -1 && top + height < 0) {  // scrolling up && obj appears just above top border
+  if (!world.adjusted && this.scrollDirection === -1 && top + height < 0) {  // scrolling up && obj appears just above top border
     after = Burner.System.getAllItemsByAttribute('index', this.index + totalColumns)[0];
     if (after) {
       this.firstChildHeight = firstChild.offsetHeight; // add the first child height to cached object
+      //this.scrollDirection = myDirection;
       Driver.updateCache(this);
       Burner.System.destroyItem(this); // destory this obj
       world.paddingTop += this.firstChildHeight + Driver.OBJ_PADDING; // add height to world top paddding
@@ -88,9 +102,10 @@ Rider.prototype.step = function() {
     }
   }
 
-  if (!world.adjusted && scrollDirection === 1 && top > Driver.viewportDimensions.height) { // scrolling down && obj appears below bottom border
+  if (!world.adjusted && this.scrollDirection === 1 && top > Driver.viewportDimensions.height) { // scrolling down && obj appears below bottom border
     before = Burner.System.getAllItemsByAttribute('index', this.index - totalColumns)[0];
     if (before) {
+      //this.scrollDirection = myDirection;
       Driver.updateCache(this);
       Burner.System.destroyItem(this); // destory this obj
       return;

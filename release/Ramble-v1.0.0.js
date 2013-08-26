@@ -1,4 +1,4 @@
-/*! Ramble v1.0.0 - 2013-08-25 05:08:13 
+/*! Ramble v1.0.0 - 2013-08-26 08:08:16 
  *  Vince Allen 
  *  Brooklyn, NY 
  *  vince@vinceallen.com 
@@ -314,7 +314,6 @@ Driver.init = function(opt_options) {
 
 };
 
-
 Driver.resetScrollBar = function(e) {
   Driver.isMouseDown = false;
   window.scrollTo(0, Driver.defaultPosition);
@@ -324,7 +323,7 @@ Driver.resetScrollBar = function(e) {
 Driver.onMouseDown = function() {
   Driver.isMouseDown = true;
   exports.Utils._addEvent(window, 'mousemove', Driver.onMouseMove);
-}
+};
 
 Driver.onMouseMove = function(e) {
   exports.Utils._removeEvent(window, 'mousemove', Driver.onMouseMove);
@@ -335,7 +334,7 @@ Driver.onMouseMove = function(e) {
 Driver.onMouseUp = function() {
   Driver.isMouseDown = false;
   Driver.resetScrollBar();
-}
+};
 
 Driver.onScroll = function(e) {
 
@@ -451,28 +450,26 @@ Driver.createRider = function(i, opt_options) {
   obj.el.innerHTML = '';
   obj.el.appendChild(props.contents);
 
+  // !! should not use Driver.scrollDirection; could be different than world scroll direction
+
+  //console.log(obj.world.velocity.y);
+  var s;
+  if (Math.abs(obj.world.velocity.y) < 0.1) {
+    s = -1;
+  } else if (obj.world.velocity.y <= 0) {
+    s = -1;
+  } else {
+    s = 1;
+  }
+
   // shuffle frogs based on scroll direction
-  if (Driver.scrollDirection === -1 && obj.world.el.firstChild) {
+  if (s === -1 && obj.world.el.firstChild) {
     obj.world.el.insertBefore(obj.el, null); // appends to end of node list
-  } else if (Driver.scrollDirection === 1 && obj.world.el.firstChild) {
+  } else if (s === 1 && obj.world.el.firstChild) {
     obj.world.el.insertBefore(obj.el, obj.world.el.firstChild); // appends to beginning of node list
   }
 
   return obj;
-};
-
-/**
- * Handles the scroll event.
- */
-Driver.onScroll_ = function() {
-
-  Driver.scrollDirection = Driver.lastPageYOffset > window.pageYOffset ? 1 : -1;
-  Driver.lastPageYOffset = window.pageYOffset;
-  Driver.scrollDistance = window.pageYOffset;
-
-  if (Driver.scrollBlock.el.getBoundingClientRect().bottom <= Driver.viewportDimensions.height) {
-    Driver.scrollBlock.addHeight();
-  }
 };
 
 /**
@@ -493,7 +490,8 @@ Driver.updateCache = function(obj) {
   this.cache[obj.index] = {
     height: obj.height,
     firstChildHeight: obj.firstChildHeight,
-    contents: obj.contents
+    contents: obj.contents,
+    scrollDirection: obj.scrollDirection
   };
 };
 
@@ -691,8 +689,21 @@ Rider.prototype.step = function() {
   }*/
 
   // use this.world.velocity.y?
+ 
 
-  if (!world.adjusted && scrollDirection === -1 &&
+
+  if (Math.abs(this.world.velocity.y) < 0.1) {
+    this.scrollDirection = -1;
+  } else if (this.world.velocity.y <= 0) {
+    this.scrollDirection = -1;
+  } else {
+    this.scrollDirection = 1;
+  }
+
+
+  // destroyed rider should save its scrollDirection
+
+  if (!world.adjusted && this.scrollDirection === -1 &&
       top + height < Driver.viewportDimensions.height) { // scrolling up && obj appears just above bottom border
     after = Burner.System.getAllItemsByAttribute('index', this.index + totalColumns)[0];
     if (!after) { // if an obj does NOT exist under me
@@ -705,7 +716,7 @@ Rider.prototype.step = function() {
     }
   }
 
-  if (!world.adjusted && scrollDirection === 1 && top > 0) { // scrolling down && obj appears just below top border
+  if (!world.adjusted && this.scrollDirection === 1 && top > 0) { // scrolling down && obj appears just below top border
     before = Burner.System.getAllItemsByAttribute('index', this.index - totalColumns)[0];
     if (!before && this.index >= totalColumns) {
       if (top > Driver.viewportDimensions.height) { // if obj also appears below bottom border
@@ -721,10 +732,11 @@ Rider.prototype.step = function() {
     }
   }
 
-  if (!world.adjusted && scrollDirection === -1 && top + height < 0) {  // scrolling up && obj appears just above top border
+  if (!world.adjusted && this.scrollDirection === -1 && top + height < 0) {  // scrolling up && obj appears just above top border
     after = Burner.System.getAllItemsByAttribute('index', this.index + totalColumns)[0];
     if (after) {
       this.firstChildHeight = firstChild.offsetHeight; // add the first child height to cached object
+      //this.scrollDirection = myDirection;
       Driver.updateCache(this);
       Burner.System.destroyItem(this); // destory this obj
       world.paddingTop += this.firstChildHeight + Driver.OBJ_PADDING; // add height to world top paddding
@@ -733,9 +745,10 @@ Rider.prototype.step = function() {
     }
   }
 
-  if (!world.adjusted && scrollDirection === 1 && top > Driver.viewportDimensions.height) { // scrolling down && obj appears below bottom border
+  if (!world.adjusted && this.scrollDirection === 1 && top > Driver.viewportDimensions.height) { // scrolling down && obj appears below bottom border
     before = Burner.System.getAllItemsByAttribute('index', this.index - totalColumns)[0];
     if (before) {
+      //this.scrollDirection = myDirection;
       Driver.updateCache(this);
       Burner.System.destroyItem(this); // destory this obj
       return;
