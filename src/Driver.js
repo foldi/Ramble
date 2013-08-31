@@ -275,22 +275,16 @@ Driver.createRider = function(i, opt_options) {
   obj.el.innerHTML = '';
   obj.el.appendChild(props.contents);
 
-  // !! should not use Driver.scrollDirection; could be different than world scroll direction
-
-  //console.log(obj.world.velocity.y);
-  var s;
-  if (Math.abs(obj.world.velocity.y) < 0.1) {
-    s = -1;
-  } else if (obj.world.velocity.y <= 0) {
-    s = -1;
-  } else {
-    s = 1;
+  // check world velocity to determine scroll direction
+  var scrollVel = 1;
+  if (obj.world.velocity.y <= 0 || Math.abs(obj.world.velocity.y) < 0.1) {
+    scrollVel = -1;
   }
 
   // shuffle frogs based on scroll direction
-  if (s === -1 && obj.world.el.firstChild) {
+  if (scrollVel === -1 && obj.world.el.firstChild) {
     obj.world.el.insertBefore(obj.el, null); // appends to end of node list
-  } else if (s === 1 && obj.world.el.firstChild) {
+  } else if (scrollVel === 1 && obj.world.el.firstChild) {
     obj.world.el.insertBefore(obj.el, obj.world.el.firstChild); // appends to beginning of node list
   }
 

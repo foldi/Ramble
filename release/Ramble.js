@@ -1,4 +1,4 @@
-/*! Ramble v1.0.0 - 2013-08-26 08:08:16 
+/*! Ramble v1.0.0 - 2013-08-31 01:08:24 
  *  Vince Allen 
  *  Brooklyn, NY 
  *  vince@vinceallen.com 
@@ -450,22 +450,16 @@ Driver.createRider = function(i, opt_options) {
   obj.el.innerHTML = '';
   obj.el.appendChild(props.contents);
 
-  // !! should not use Driver.scrollDirection; could be different than world scroll direction
-
-  //console.log(obj.world.velocity.y);
-  var s;
-  if (Math.abs(obj.world.velocity.y) < 0.1) {
-    s = -1;
-  } else if (obj.world.velocity.y <= 0) {
-    s = -1;
-  } else {
-    s = 1;
+  // check world velocity to determine scroll direction
+  var scrollVel = 1;
+  if (obj.world.velocity.y <= 0 || Math.abs(obj.world.velocity.y) < 0.1) {
+    scrollVel = -1;
   }
 
   // shuffle frogs based on scroll direction
-  if (s === -1 && obj.world.el.firstChild) {
+  if (scrollVel === -1 && obj.world.el.firstChild) {
     obj.world.el.insertBefore(obj.el, null); // appends to end of node list
-  } else if (s === 1 && obj.world.el.firstChild) {
+  } else if (scrollVel === 1 && obj.world.el.firstChild) {
     obj.world.el.insertBefore(obj.el, obj.world.el.firstChild); // appends to beginning of node list
   }
 
@@ -589,7 +583,7 @@ Burner.System.extend(Lane, Burner.World);
  */
 Lane.prototype.step = function() {
 
-		// friction
+	// apply friction
   this.friction.x = this.velocity.x;
   this.friction.y = this.velocity.y;
   this.friction.mult(-1);
@@ -597,11 +591,12 @@ Lane.prototype.step = function() {
   this.friction.mult(this.c);
   this.applyForce(this.friction);
 
-  //
+  // apply forces
   this.applyForce(exports.Driver.force);
   this.velocity.add(this.acceleration);
   this.velocity.limit(this.maxSpeed);
-  //this.location.add(this.velocity);
+
+  // let margin top determine location
   if (Math.abs(this.velocity.y) > 0.1) {
     this.marginTop += this.velocity.y;
   }
@@ -609,6 +604,7 @@ Lane.prototype.step = function() {
     this.marginTop = 0;
     this.velocity.mult(0);
   }
+  
   this.acceleration.mult(0);
 
   this.adjusted = false;
