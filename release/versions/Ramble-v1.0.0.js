@@ -1,4 +1,4 @@
-/*! Ramble v1.0.0 - 2013-09-01 02:09:56 
+/*! Ramble v1.0.0 - 2013-09-01 03:09:16 
  *  Vince Allen 
  *  Brooklyn, NY 
  *  vince@vinceallen.com 
@@ -250,6 +250,7 @@ Driver.init = function(opt_options) {
   }
 
   this.forceDirected = options.forceDirected !== undefined ? options.forceDirected : true;
+  this.mouseForce = !!options.mouseForce;
 
   this.viewportDimensions = Utils.getViewportSize();
   this.totalColumns = this.getTotalColumns();
@@ -307,13 +308,14 @@ Driver.init = function(opt_options) {
   document.getElementById('scrollBlock').style.height = this.scrollBlockHeight + 'px';
   window.scrollTo(0, this.defaultPosition);
 
-  exports.Utils._addEvent(document, 'mousedown', this.onMouseDown);
-
-  exports.Utils._addEvent(document, 'mouseup', this.onMouseUp);
-
-  exports.Utils._addEvent(window, 'mouseout', this.resetScrollBar);
-
-  exports.Utils._addEvent(document, 'scroll', this.onScroll);
+  if (!this.mouseForce) {
+    exports.Utils._addEvent(document, 'mousedown', this.onMouseDown);
+    exports.Utils._addEvent(document, 'mouseup', this.onMouseUp);
+    exports.Utils._addEvent(window, 'mouseout', this.resetScrollBar);
+    exports.Utils._addEvent(document, 'scroll', this.onScroll);
+  } else {
+    exports.Utils._addEvent(document, 'mousemove', this.onMouseForceMove);
+  }
 
 };
 
@@ -368,6 +370,21 @@ Driver.onScroll = function(e) {
 };
 
 /**
+ * Handles mouse move.
+ */
+Driver.onMouseForceMove = function(e) {
+
+  var mouseY = e.clientY;
+
+  if (mouseY > Driver.viewportDimensions.height / 2) {
+    Driver.force.y = exports.Utils.map(mouseY, Driver.viewportDimensions.height / 2,
+        Driver.viewportDimensions.height, 0, -1);
+  } else {
+    Driver.force.y = exports.Utils.map(mouseY, 0, Driver.viewportDimensions.height / 2, 1, 0);
+  }
+};
+
+/**
  * Sets the total number of scrollable columns.
  */
 Driver.getTotalColumns = function() {
@@ -389,12 +406,6 @@ Driver.createRider = function(i, opt_options) {
   var options = opt_options || {}, props = {},
       myCol = i % this.totalColumns,
       scrollSpeed;
-
-  /*if (!this.speedPropToMass) {
-    scrollSpeed = myCol % 2 ?  this.MAX_SCROLL_SPEED :  this.MIN_SCROLL_SPEED;
-  } else {
-    scrollSpeed = exports.Utils.map(myCol, 0, this.totalColumns - 1, this.MIN_SCROLL_SPEED, this.MAX_SCROLL_SPEED);
-  }*/
 
   /**
    * If a story has been cached (ie. in the object pool),
