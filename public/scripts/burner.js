@@ -22,8 +22,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-/* Version: 2.0.5 */
-/* Build time: August 24, 2013 04:21:57 *//** @namespace */
+/* Version: 2.1.0 */
+/* Build time: September 1, 2013 11:07:30 *//** @namespace */
 var Burner = {}, exports = Burner;
 
 (function(exports) {
@@ -655,6 +655,11 @@ function Item(options) {
  * @param {number} [opt_options.maxSpeed = 10] maxSpeed.
  * @param {number} [opt_options.minSpeed = 10] minSpeed.
  * @param {number} [opt_options.angle = 0] Angle.
+ * @param {string} [opt_options.position = 'absolute'] A css position. Possible values: 'absoulte', 'fixed', 'static', 'relative'.
+ * @param {number} [opt_options.paddingTop = 0] Padding top.
+ * @param {number} [opt_options.paddingRight = 0] Padding right.
+ * @param {number} [opt_options.paddingBottom = 0] Padding bottom.
+ * @param {number} [opt_options.paddingLeft = 0] Padding left.
  * @param {number} [opt_options.lifespan = -1] Lifespan.
  * @param {number} [opt_options.life = 0] Life.
  * @param {boolean} [opt_options.isStatic = false] If set to true, object will not move.
@@ -714,6 +719,9 @@ Item.prototype.reset = function(opt_options) {
 
   this.position = options.position || 'absolute';
   this.paddingTop = options.paddingTop || 0;
+  this.paddingRight = options.paddingRight || 0;
+  this.paddingBottom = options.paddingBottom || 0;
+  this.paddingLeft = options.paddingLeft || 0;
   this.marginTop = options.marginTop || 0;
 
   this.lifespan = options.lifespan === undefined ? -1 : options.lifespan;
@@ -1740,6 +1748,9 @@ System._draw = function(obj) {
     boxShadowColor2: obj.boxShadowColor[2],
     position: obj.position,
     paddingTop: obj.paddingTop,
+    paddingRight: obj.paddingRight,
+    paddingBottom: obj.paddingBottom,
+    paddingLeft: obj.paddingLeft,
     marginTop: obj.marginTop
   });
   obj.el.style.cssText = cssText;
@@ -1757,7 +1768,7 @@ System.getCSSText = function(props) {
       props.borderWidth + 'px ' + props.borderStyle + ' ' + props.colorMode + '(' + props.borderColor0 + ', ' + props.borderColor1 + (props.colorMode === 'hsl' ? '%' : '') + ', ' + props.borderColor2 + (props.colorMode === 'hsl' ? '%' : '') + '); border-radius: ' +
       props.borderRadius + '%; box-shadow: ' + props.boxShadowOffsetX + 'px ' + props.boxShadowOffsetY + 'px ' + props.boxShadowBlur + 'px ' + props.boxShadowSpread + 'px ' + props.colorMode + '(' + props.boxShadowColor0 + ', ' + props.boxShadowColor1 + (props.colorMode === 'hsl' ? '%' : '') + ', ' + props.boxShadowColor2 + (props.colorMode === 'hsl' ? '%' : '') + '); visibility: ' +
       props.visibility + '; opacity: ' + props.opacity + '; z-index: ' + props.zIndex + '; position: ' +
-      props.position + '; padding-top: ' + props.paddingTop + 'px; margin-top: ' + props.marginTop + 'px;';
+      props.position + '; padding-top: ' + props.paddingTop + 'px; padding-right: ' + props.paddingRight + 'px; padding-bottom: ' + props.paddingBottom + 'px; padding-left: ' + props.paddingLeft + 'px; margin-top: ' + props.marginTop + 'px;';
 };
 exports.System = System;
 /*global exports */
@@ -1775,7 +1786,8 @@ function World(el, opt_options) {
     throw new Error('World: A valid DOM object is required for the new World "el" property.');
   }
 
-  var options = opt_options || {};
+  var options = opt_options || {},
+      viewportSize = exports.System.getWindowSize();
 
   this.el = el;
   this.name = 'World';
@@ -1800,10 +1812,13 @@ function World(el, opt_options) {
   this.gravity = options.gravity || new exports.Vector(0, 1);
   this.c = options.c || 0.1;
   this.boundToWindow = options.boundToWindow === false ? false : true;
-  this.location = options.location;
+  this.location = options.location || new exports.Vector(viewportSize.width / 2, viewportSize.height / 2);
   this.initLocation = new exports.Vector(this.location.x, this.location.y);
   this.position = options.position || 'absolute';
   this.paddingTop = options.paddingTop || 0;
+  this.paddingRight = options.paddingRight || 0;
+  this.paddingBottom = options.paddingBottom || 0;
+  this.paddingLeft = options.paddingLeft || 0;
   this.marginTop = options.marginTop || 0;
 
   this.pauseStep = false;

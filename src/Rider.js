@@ -28,27 +28,6 @@ Rider.prototype.step = function() {
       top = rect.top,
       height = rect.height;
 
-  // don't check for Driver.scrollDirection; use this obj's
-  /*if (this.lastLocY >= top || !this.lastLocY) {
-    scrollDirection = -1;
-  } else {
-    scrollDirection = 1;
-  }
-
-  if (top - this.lastLocY > Driver.viewportDimensions.height) {
-    scrollDirection = -1;
-  } else if (this.lastLocY - top > Driver.viewportDimensions.height) {
-    //scrollDirection = 1;
-  }
-
-  if (scrollDirection === 1) {
-    console.log(scrollDirection);
-  }*/
-
-  // use this.world.velocity.y?
- 
-
-
   if (Math.abs(this.world.velocity.y) < 0.1) {
     this.scrollDirection = -1;
   } else if (this.world.velocity.y <= 0) {
@@ -57,6 +36,11 @@ Rider.prototype.step = function() {
     this.scrollDirection = 1;
   }
 
+  // check world velocity to determine scroll direction
+  /*var this.scrollDirection = 1;
+  if (obj.world.velocity.y <= 0 || Math.abs(this.world.velocity.y) < 0.1) {
+    this.scrollDirection = -1;
+  }*/
 
   // destroyed rider should save its scrollDirection
 

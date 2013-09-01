@@ -8,13 +8,13 @@
   <link href='css/Ramble.min.css' rel='stylesheet' type='text/css' charset='utf-8' />
   <script src='scripts/modernizr.js' type='text/javascript' charset='utf-8'></script>
   <script src='scripts/burner.js' type='text/javascript' charset='utf-8'></script>
-  <script src='scripts/Ramble.js' type='text/javascript' charset='utf-8'></script>
+  <script src='scripts/Ramble.min.js' type='text/javascript' charset='utf-8'></script>
   </head>
   <body>
     <div id='scrollBlock'></div>
     <script type='text/javascript' charset='utf-8'>
 
-      var palette = new exports.ColorPalette();
+      var palette = new Ramble.ColorPalette();
       palette.addColor({
         min: 12,
         max: 24,
@@ -49,17 +49,18 @@
 
       Ramble.Driver.init({
         system: system,
-        objPadding: 100,
+        objPadding: 120,
         objMinWidth: 120,
         objMaxWidth: 120,
-        minScrollSpeed: 0.4,
-        maxScrollSpeed: 0.4,
-        scrollBlockHeight: 2000,
-        scrollBlockBuffer: 2000,
-        palette: null
+        minSpeed: 0,
+        maxSpeed: 30,
+        minMass: 3,
+        maxMass: 3,
+        palette: null,
+        forceDirected: false
       });
 
-      var statsDisplay = new Ramble.StatsDisplay();
+      //var statsDisplay = new Ramble.StatsDisplay();
 
     </script>
   </body>

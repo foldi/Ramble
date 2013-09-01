@@ -61,29 +61,28 @@ Driver.init = function(opt_options) {
   var i, max, options = opt_options || {},
       worlds;
 
+  this.OBJ_PADDING = options.objPadding || 20;
   this.OBJ_MIN_WIDTH = options.objMinWidth || 60;
   this.OBJ_MAX_WIDTH = options.objMaxWidth || 120;
-  this.OBJ_PADDING = options.objPadding || 20;
-  this.MIN_SCROLL_SPEED = options.minScrollSpeed || 0.4;
-  this.MAX_SCROLL_SPEED = options.maxScrollSpeed || 0.45;
+  this.MIN_MASS = options.minMass || 3;
+  this.MAX_MASS = options.maxMass || 1;
+  this.MIN_SPEED = options.minSpeed || 15;
+  this.MAX_SPEED = options.maxSpeed || 0;
   this.CONTENT_CONTAINER = options.CONTENT_CONTAINER || document.body;
 
   if (!Driver.INITIAL_Y_OFFSET) {
     Driver.INITIAL_Y_OFFSET = options.initYOffset || this.OBJ_PADDING;
   }
 
+  this.forceDirected = options.forceDirected !== undefined ? options.forceDirected : true;
+
   this.viewportDimensions = Utils.getViewportSize();
-  /*this.scrollBlock = new exports.ScrollBlock(document.getElementById('scrollBlock'), {
-    height: options.scrollBlockHeight || this.viewportDimensions.height * 2,
-    heightBuffer: options.scrollBlockBuffer || this.viewportDimensions.height * 2
-  });*/
   this.totalColumns = this.getTotalColumns();
   this.palette = options.palette || null;
   this.system = options.system;
 
   // create worlds
   //
-  //this.totalColumns = 1;
   var totalWidth = ((this.totalColumns - 1) * this.OBJ_MAX_WIDTH) + ((this.totalColumns - 1) * this.OBJ_PADDING);
   var xOffset = this.viewportDimensions.width / 2 - totalWidth / 2;
 
@@ -93,6 +92,10 @@ Driver.init = function(opt_options) {
     worldDiv.id = 'world' + i;
     this.CONTENT_CONTAINER.appendChild(worldDiv);
     worlds.push(new exports.Lane(document.getElementById('world' + i), {
+      forceDirected: this.forceDirected,
+      mass: exports.Utils.map(i, 0, this.totalColumns, this.MAX_MASS, this.MIN_MASS),
+      minSpeed: this.MIN_SPEED,
+      maxSpeed: this.MAX_SPEED,
       width: this.OBJ_MAX_WIDTH,
       height: this.viewportDimensions.height,
       autoHeight: true,
@@ -113,7 +116,7 @@ Driver.init = function(opt_options) {
 
   // initialize the system
   //
-  this.system.init(null, worlds);
+  this.system.init(null, worlds, null, true);
 
   for (i = 0; i < Ramble.Driver.totalColumns; i++) { // create first row
     Ramble.Driver.createRider(i);
@@ -170,11 +173,11 @@ Driver.onScroll = function(e) {
     Driver.scrollDirection = Driver.lastPageYOffset > window.pageYOffset ? 1 : -1;
   }
 
-  if (Driver.scrollDirection === -1) {
-    Driver.force.y = exports.Utils.map(-rect.top, Driver.defaultPosition,
-        Driver.scrollBlockHeight - Driver.viewportDimensions.height, 0, -1);
+  if (-rect.top > Driver.defaultPosition || Driver.scrollDirection === -1) {
+        Driver.force.y = exports.Utils.map(-rect.top, Driver.defaultPosition,
+      Driver.scrollBlockHeight - Driver.viewportDimensions.height, 0, -1);
   } else {
-    Driver.force.y = exports.Utils.map(-rect.top, 0, Driver.defaultPosition, 2, 0);
+    Driver.force.y = exports.Utils.map(-rect.top, 0, Driver.defaultPosition, 1, 0);
   }
 
   clearTimeout(Driver.scrollTimeout);
@@ -262,9 +265,6 @@ Driver.createRider = function(i, opt_options) {
   props.location = 'none';
   props.position = 'relative';
   props.opacity = 1;
-  props.borderWidth = 1;
-    props.borderStyle = 'none';
-    props.borderColor = [255, 255, 0];
 
   /**
    * Create the object.

@@ -7,15 +7,14 @@
   <title>Ramble</title>
   <link href='css/Ramble.min.css' rel='stylesheet' type='text/css' charset='utf-8' />
   <script src='scripts/modernizr.js' type='text/javascript' charset='utf-8'></script>
-  <script src='scripts/SimpleSim.js' type='text/javascript' charset='utf-8'></script>
-  <script src='scripts/Ramble.js' type='text/javascript' charset='utf-8'></script>
+  <script src='scripts/burner.js' type='text/javascript' charset='utf-8'></script>
+  <script src='scripts/Ramble.min.js' type='text/javascript' charset='utf-8'></script>
   </head>
   <body>
-    <div id='worldA'></div>
     <div id='scrollBlock'></div>
     <script type='text/javascript' charset='utf-8'>
 
-      var palette = new exports.ColorPalette();
+      var palette = new Ramble.ColorPalette();
       palette.addColor({
         min: 12,
         max: 24,
@@ -43,47 +42,25 @@
         endColor: [171, 55, 19]
       });
 
-      var system = SimpleSim.System;
-      SimpleSim.System.Classes = Ramble;
-
-      var world = new SimpleSim.World(document.getElementById('worldA'),{
-        color: [220, 220, 220]
-      });
-      world.afterResize = Ramble.Driver.reflowObjs;
-
-      system.init(world, {
-        csstransforms3d: Modernizr.csstransforms3d,
-        csstransforms: Modernizr.csstransforms
-      });
-
-      system._records.list[0].afterResize = Ramble.Driver.reflowObjs;
+      var system = Burner.System;
+      Burner.Classes = Ramble;
 
       window.scrollTo(0, 0);
 
       Ramble.Driver.init({
-        objPadding: 60,
-        objMinWidth: 60,
+        system: system,
+        objPadding: 120,
+        objMinWidth: 80,
         objMaxWidth: 120,
-        minScrollSpeed: 0.1,
-        maxScrollSpeed: 0.2,
-        scrollBlockHeight: 1000,
+        minSpeed: 0,
+        maxSpeed: 30,
+        minMass: 1,
+        maxMass: 3,
         palette: palette,
-        speedPropToMass: true
+        forceDirected: true
       });
 
-      for (var i = 0; i < Ramble.Driver.totalColumns; i++) { // create first row
-        Ramble.Driver.createRider(i);
-      }
-
-      var shortestColumn = 0;
-      while(shortestColumn < Ramble.Driver.viewportDimensions.height) {
-        system._update();
-        shortestColumn = Ramble.Driver.getMinMaxColumn();
-      }
-
-      system._update();
-
-      var statsDisplay = new Ramble.StatsDisplay();
+      //var statsDisplay = new Ramble.StatsDisplay();
 
     </script>
   </body>

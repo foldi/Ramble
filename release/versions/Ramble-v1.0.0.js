@@ -1,4 +1,4 @@
-/*! Ramble v1.0.0 - 2013-08-31 01:08:24 
+/*! Ramble v1.0.0 - 2013-09-01 02:09:56 
  *  Vince Allen 
  *  Brooklyn, NY 
  *  vince@vinceallen.com 
@@ -236,29 +236,28 @@ Driver.init = function(opt_options) {
   var i, max, options = opt_options || {},
       worlds;
 
+  this.OBJ_PADDING = options.objPadding || 20;
   this.OBJ_MIN_WIDTH = options.objMinWidth || 60;
   this.OBJ_MAX_WIDTH = options.objMaxWidth || 120;
-  this.OBJ_PADDING = options.objPadding || 20;
-  this.MIN_SCROLL_SPEED = options.minScrollSpeed || 0.4;
-  this.MAX_SCROLL_SPEED = options.maxScrollSpeed || 0.45;
+  this.MIN_MASS = options.minMass || 3;
+  this.MAX_MASS = options.maxMass || 1;
+  this.MIN_SPEED = options.minSpeed || 15;
+  this.MAX_SPEED = options.maxSpeed || 0;
   this.CONTENT_CONTAINER = options.CONTENT_CONTAINER || document.body;
 
   if (!Driver.INITIAL_Y_OFFSET) {
     Driver.INITIAL_Y_OFFSET = options.initYOffset || this.OBJ_PADDING;
   }
 
+  this.forceDirected = options.forceDirected !== undefined ? options.forceDirected : true;
+
   this.viewportDimensions = Utils.getViewportSize();
-  /*this.scrollBlock = new exports.ScrollBlock(document.getElementById('scrollBlock'), {
-    height: options.scrollBlockHeight || this.viewportDimensions.height * 2,
-    heightBuffer: options.scrollBlockBuffer || this.viewportDimensions.height * 2
-  });*/
   this.totalColumns = this.getTotalColumns();
   this.palette = options.palette || null;
   this.system = options.system;
 
   // create worlds
   //
-  //this.totalColumns = 1;
   var totalWidth = ((this.totalColumns - 1) * this.OBJ_MAX_WIDTH) + ((this.totalColumns - 1) * this.OBJ_PADDING);
   var xOffset = this.viewportDimensions.width / 2 - totalWidth / 2;
 
@@ -268,6 +267,10 @@ Driver.init = function(opt_options) {
     worldDiv.id = 'world' + i;
     this.CONTENT_CONTAINER.appendChild(worldDiv);
     worlds.push(new exports.Lane(document.getElementById('world' + i), {
+      forceDirected: this.forceDirected,
+      mass: exports.Utils.map(i, 0, this.totalColumns, this.MAX_MASS, this.MIN_MASS),
+      minSpeed: this.MIN_SPEED,
+      maxSpeed: this.MAX_SPEED,
       width: this.OBJ_MAX_WIDTH,
       height: this.viewportDimensions.height,
       autoHeight: true,
@@ -288,7 +291,7 @@ Driver.init = function(opt_options) {
 
   // initialize the system
   //
-  this.system.init(null, worlds);
+  this.system.init(null, worlds, null, true);
 
   for (i = 0; i < Ramble.Driver.totalColumns; i++) { // create first row
     Ramble.Driver.createRider(i);
@@ -345,11 +348,11 @@ Driver.onScroll = function(e) {
     Driver.scrollDirection = Driver.lastPageYOffset > window.pageYOffset ? 1 : -1;
   }
 
-  if (Driver.scrollDirection === -1) {
-    Driver.force.y = exports.Utils.map(-rect.top, Driver.defaultPosition,
-        Driver.scrollBlockHeight - Driver.viewportDimensions.height, 0, -1);
+  if (-rect.top > Driver.defaultPosition || Driver.scrollDirection === -1) {
+        Driver.force.y = exports.Utils.map(-rect.top, Driver.defaultPosition,
+      Driver.scrollBlockHeight - Driver.viewportDimensions.height, 0, -1);
   } else {
-    Driver.force.y = exports.Utils.map(-rect.top, 0, Driver.defaultPosition, 2, 0);
+    Driver.force.y = exports.Utils.map(-rect.top, 0, Driver.defaultPosition, 1, 0);
   }
 
   clearTimeout(Driver.scrollTimeout);
@@ -437,9 +440,6 @@ Driver.createRider = function(i, opt_options) {
   props.location = 'none';
   props.position = 'relative';
   props.opacity = 1;
-  props.borderWidth = 1;
-    props.borderStyle = 'none';
-    props.borderColor = [255, 255, 0];
 
   /**
    * Create the object.
@@ -564,6 +564,7 @@ function Lane(el, opt_options) {
     throw new Error('World: A valid DOM object is required for a new FroggerLane.');
 	}
 
+  this.forceDirected = options.forceDirected;
 	this.scrollSpeed = options.scrollSpeed || 0.5;
 	this.position = 'fixed';
 	this.adjusted = false;
@@ -571,9 +572,9 @@ function Lane(el, opt_options) {
 	this.velocity = new Burner.Vector();
 	this._force = new Burner.Vector();
 	this.friction = new Burner.Vector();
-	this.mass = exports.Utils.map(options.index, 0, options.totalColumns, 3, 1);
-	this.maxSpeed = 15;
-	this.minSpeed = 0;
+	this.mass = options.mass || 3;
+  this.minSpeed = options.minSpeed || 0;
+	this.maxSpeed = options.maxSpeed || 15;
 	Burner.World.call(this, el, options);
 }
 Burner.System.extend(Lane, Burner.World);
@@ -583,29 +584,42 @@ Burner.System.extend(Lane, Burner.World);
  */
 Lane.prototype.step = function() {
 
-	// apply friction
-  this.friction.x = this.velocity.x;
-  this.friction.y = this.velocity.y;
-  this.friction.mult(-1);
-  this.friction.normalize();
-  this.friction.mult(this.c);
-  this.applyForce(this.friction);
+  if (this.forceDirected) {
 
-  // apply forces
-  this.applyForce(exports.Driver.force);
-  this.velocity.add(this.acceleration);
-  this.velocity.limit(this.maxSpeed);
+    // apply friction
+    this.friction.x = this.velocity.x;
+    this.friction.y = this.velocity.y;
+    this.friction.mult(-1);
+    this.friction.normalize();
+    this.friction.mult(this.c);
+    this.applyForce(this.friction);
 
-  // let margin top determine location
-  if (Math.abs(this.velocity.y) > 0.1) {
-    this.marginTop += this.velocity.y;
+    // apply forces
+    this.applyForce(exports.Driver.force);
+    this.velocity.add(this.acceleration);
+    this.velocity.limit(this.maxSpeed);
+
+    // let margin top determine location
+    if (Math.abs(this.velocity.y) > 0.1) {
+      this.marginTop += this.velocity.y;
+    }
+    if (this.marginTop > 0) {
+      this.marginTop = 0;
+      this.velocity.mult(0);
+    }
+
+    this.acceleration.mult(0);
+
+  } else {
+    //console.log(exports.Driver.force.y);
+    this.velocity.y = exports.Driver.force.y;
+    if (Math.abs(exports.Driver.force.y) > 0.1) {
+      this.marginTop += exports.Driver.force.y * this.maxSpeed;
+    }
+    if (this.marginTop > 0) {
+      this.marginTop = 0;
+    }
   }
-  if (this.marginTop > 0) {
-    this.marginTop = 0;
-    this.velocity.mult(0);
-  }
-  
-  this.acceleration.mult(0);
 
   this.adjusted = false;
 };
@@ -667,27 +681,6 @@ Rider.prototype.step = function() {
       top = rect.top,
       height = rect.height;
 
-  // don't check for Driver.scrollDirection; use this obj's
-  /*if (this.lastLocY >= top || !this.lastLocY) {
-    scrollDirection = -1;
-  } else {
-    scrollDirection = 1;
-  }
-
-  if (top - this.lastLocY > Driver.viewportDimensions.height) {
-    scrollDirection = -1;
-  } else if (this.lastLocY - top > Driver.viewportDimensions.height) {
-    //scrollDirection = 1;
-  }
-
-  if (scrollDirection === 1) {
-    console.log(scrollDirection);
-  }*/
-
-  // use this.world.velocity.y?
- 
-
-
   if (Math.abs(this.world.velocity.y) < 0.1) {
     this.scrollDirection = -1;
   } else if (this.world.velocity.y <= 0) {
@@ -696,6 +689,11 @@ Rider.prototype.step = function() {
     this.scrollDirection = 1;
   }
 
+  // check world velocity to determine scroll direction
+  /*var this.scrollDirection = 1;
+  if (obj.world.velocity.y <= 0 || Math.abs(this.world.velocity.y) < 0.1) {
+    this.scrollDirection = -1;
+  }*/
 
   // destroyed rider should save its scrollDirection
 

@@ -1,9 +1,8 @@
 #### FOLDERS ####
 node_modules
 reports
-.grunt
 
 #### FILES ####
 *.DS_Store
 *.swp
-_SpecRunner.html
+*.grunt
