@@ -128,7 +128,11 @@ Driver.init = function(opt_options) {
   //
 
   this.defaultPosition = this.viewportDimensions.height * 0.5;
-  this.scrollBlockHeight = this.viewportDimensions.height * 3;
+  if (!this.mouseForce) {
+    this.scrollBlockHeight = this.viewportDimensions.height * 3;
+  } else {
+    this.scrollBlockHeight = 0;
+  }
   this.lastScrollY = 0;
   document.getElementById('scrollBlock').style.height = this.scrollBlockHeight + 'px';
   window.scrollTo(0, this.defaultPosition);

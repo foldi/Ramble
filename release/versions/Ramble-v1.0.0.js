@@ -1,4 +1,4 @@
-/*! Ramble v1.0.0 - 2013-09-01 03:09:16 
+/*! Ramble v1.0.0 - 2013-09-01 06:09:54 
  *  Vince Allen 
  *  Brooklyn, NY 
  *  vince@vinceallen.com 
@@ -303,7 +303,11 @@ Driver.init = function(opt_options) {
   //
 
   this.defaultPosition = this.viewportDimensions.height * 0.5;
-  this.scrollBlockHeight = this.viewportDimensions.height * 3;
+  if (!this.mouseForce) {
+    this.scrollBlockHeight = this.viewportDimensions.height * 3;
+  } else {
+    this.scrollBlockHeight = 0;
+  }
   this.lastScrollY = 0;
   document.getElementById('scrollBlock').style.height = this.scrollBlockHeight + 'px';
   window.scrollTo(0, this.defaultPosition);
