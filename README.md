@@ -1,9 +1,11 @@
 Ramble
 ======
 
-Ramble is a collection of experiments using force directed input to control an infinite scroller.
+Ramble is a collection of experiments using force directed input to control an infinite scroller. Pulling down on the scroller applies a upward or downward force on the objects in the viewport.
 
 Check out examples the 'public' or visit http://foldi.github.io/Ramble to see them in action.
+
+Ramble experiments are compatible with the latest version of Chrome.
 
 Building this project
 ======
