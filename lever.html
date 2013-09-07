@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv='content-type' content='text/html; charset=UTF-8' />
+  <meta name='viewport' content='user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0' />
+  <meta name='apple-mobile-web-app-capable' content='yes' />
+  <title>Ramble</title>
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-9773576-15', 'foldi.github.io');
+    ga('send', 'pageview');
+
+  </script>
+  </head>
+  <body style='margin: 0; padding: 0;'>
+    <div id='scrollBlock' style='width: 1px; height: 2000px'></div>
+    <script type='text/javascript' charset='utf-8'>
+
+      var getViewportSize = function() {
+
+        var d = {};
+
+        if (typeof(window.innerWidth) !== 'undefined') {
+          d.width = window.innerWidth;
+          d.height = window.innerHeight;
+        } else if (typeof(document.documentElement) !== 'undefined' &&
+            typeof(document.documentElement.clientWidth) !== 'undefined') {
+          d.width = document.documentElement.clientWidth;
+          d.height = document.documentElement.clientHeight;
+        } else if (typeof(document.body) !== 'undefined') {
+          d.width = document.body.clientWidth;
+          d.height = document.body.clientHeight;
+        } else {
+          d.width = undefined;
+          d.height = undefined;
+        }
+        return d;
+      };
+
+      var addEvent = function(target, eventType, handler) {
+        if (target.addEventListener) { // W3C
+          target.addEventListener(eventType, handler, false);
+        } else if (target.attachEvent) { // IE
+          target.attachEvent('on' + eventType, handler);
+        }
+      };
+
+      var removeEvent = function(target, eventType, handler) {
+        if (target.removeEventListener) { // W3C
+          target.removeEventListener(eventType, handler, false);
+        } else if (target.detachEvent) { // IE
+          target.detachEvent('on' + eventType, handler);
+        }
+      };
+
+      //
+
+      /**
+       * Chrome detects mouseup/mousedown
+       * Firefox detects mouseup/mousedown; fires mousemove when moving the scrollbar
+       * Opera detects mouseup/mousedown
+       * Safari detects mousedown; fires mouseout on next mousemove
+       * IE9 detects mousedown; fires mousemove on mouseup
+       * IE10 detects mousedown; fires mousemove on mouseup
+       *
+       */
+
+      var defaultPosition, scrollBlockHeight, lastScrollY, isMouseDown,
+          isScrolling, scrollTimeout, viewportSize = getViewportSize();
+
+      var init = function() {
+        defaultPosition = viewportSize.height * 0.5;
+        scrollBlockHeight = viewportSize.height * 3;
+        document.getElementById('scrollBlock').style.height = scrollBlockHeight + 'px';
+        window.scrollTo(0, defaultPosition);
+      };
+
+      var resetScrollBar = function(e) {
+        isMouseDown = false;
+        window.scrollTo(0, defaultPosition);
+      };
+
+      var onScroll = function(e) {
+
+        var scrollBlock = document.getElementById('scrollBlock'),
+            rect = scrollBlock.getBoundingClientRect();
+
+        clearTimeout(scrollTimeout);
+
+        scrollTimeout = setTimeout(function() {
+          console.log(isMouseDown);
+          if (!isMouseDown) { // if user is not holding the scrollbar
+            window.scrollTo(0, defaultPosition);
+          }
+        }, 100);
+
+        lastScrollY = window.pageYOffset;
+
+      };
+
+      var onMouseDown = function() {
+        isMouseDown = true;
+        addEvent(window, 'mousemove', onMouseMove);
+      }
+
+      var onMouseMove = function(e) {
+        removeEvent(window, 'mousemove', onMouseMove);
+        window.scrollTo(0, defaultPosition); // IE fires a onmousemove event on scroll bar mouseup
+      };
+
+      var onMouseUp = function() {
+        isMouseDown = false;
+        resetScrollBar();
+      }
+
+      addEvent(document, 'mousedown', onMouseDown);
+
+      addEvent(document, 'mouseup', onMouseUp);
+
+      addEvent(window, 'mouseout', resetScrollBar);
+
+      addEvent(document, 'scroll', onScroll);
+
+      init();
+
+    </script>
+  </body>
+</html>
